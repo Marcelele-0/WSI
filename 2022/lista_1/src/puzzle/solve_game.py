@@ -1,6 +1,6 @@
 from src.heurestic import *
 
-def solve(state: State, goal_state: State):
+def solve(state, goal_state):
     """
     Solve the puzzle using the A* algorithm.
     """
