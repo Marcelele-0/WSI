@@ -1,8 +1,15 @@
 # target: src/main.py
 
-GOAL_STATE: [
-  1, 2, 3, 4,
-  5, 6, 7, 8,
-  9, 10, 11, 12,
-  13, 14, 15, 0
-]
+puzzle:
+  size: 4  # 4x4 grid for 15-puzzle
+
+heuristics:
+  default: "manhattan"  # default heuristic to use
+  available:
+    - "manhattan"    # sum of horizontal/vertical distances
+    - "hamming"      # number of tiles out of place
+    - "linear_conflict"  # manhattan + linear conflicts
+
+solver:
+  max_iterations: 1000000  # prevent infinite loops
+  timeout_seconds: 30  # maximum solving time
