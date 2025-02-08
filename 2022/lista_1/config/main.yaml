@@ -4,11 +4,9 @@ puzzle:
   size: 4  # 4x4 grid for 15-puzzle
 
 heuristics:
-  default: "manhattan"  # default heuristic to use
-  available:
-    - "manhattan"    # sum of horizontal/vertical distances
-    - "hamming"      # number of tiles out of place
-    - "linear_conflict"  # manhattan + linear conflicts
+  manhattan_distance: true
+  linear_conflict: true
+  misplaced_tiles: true
 
 solver:
   max_iterations: 1000000  # prevent infinite loops
