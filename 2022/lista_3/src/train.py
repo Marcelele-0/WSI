@@ -3,10 +3,6 @@ from models.lenet import LeNet
 from data.mnist import DataLoader
 
 physical_devices = tf.config.list_physical_devices('GPU')
-print("TensorFlow version:", tf.__version__)
-print("Built with CUDA:", tf.test.is_built_with_cuda())
-print("GPU devices:", tf.config.list_physical_devices('GPU'))
-
 if physical_devices:
     try:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -23,6 +19,7 @@ def compute_accuracy(model, dataset):
     for images, labels in dataset:
         predictions = model(images)
         predicted_labels = tf.argmax(predictions, axis=1)
+        labels = tf.cast(labels, tf.int64)  # Cast labels to int64
         correct += tf.reduce_sum(tf.cast(predicted_labels == labels, tf.int32)).numpy()
         total += labels.shape[0]
     return correct / total
