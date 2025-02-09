@@ -1,6 +1,11 @@
 name: list3
+channels:
+  - conda-forge
 dependencies:
-  - python=3.8
-  - tensorflow
+  - python
+  - tensorflow-gpu
+  - cudatoolkit
+  - cudnn
+  - pip
   - pip:
       - hydra-core

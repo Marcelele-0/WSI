@@ -1,8 +1,8 @@
 import tensorflow as tf
 
-class LeNet(tf.Module):
-    def __init__(self, num_classes=10, name="lenet"):
-        super().__init__(name=name)
+class LeNet(tf.keras.Model): 
+    def __init__(self, num_classes=10):
+        super().__init__()
         self.conv1 = tf.keras.layers.Conv2D(6, 5, activation='tanh', padding='same')
         self.pool1 = tf.keras.layers.AveragePooling2D(pool_size=(2, 2), strides=2)
         self.conv2 = tf.keras.layers.Conv2D(16, 5, activation='tanh', padding='valid')
@@ -12,7 +12,7 @@ class LeNet(tf.Module):
         self.fc2 = tf.keras.layers.Dense(84, activation='tanh')
         self.fc3 = tf.keras.layers.Dense(num_classes, activation='softmax')
 
-    def __call__(self, x):
+    def call(self, x):  # call zamiast __call__
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)

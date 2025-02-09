@@ -1,39 +1,66 @@
 import os
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 class DataLoader:
-    def __init__(self, batch_size, data_dir="../../data"):
+    def __init__(self, batch_size=32, data_dir="../../data"):
         self.batch_size = batch_size
-        self.data_dir = data_dir
+        self.data_dir = os.path.abspath(data_dir)
+        self.data_path = os.path.join(self.data_dir, "mnist.npz")
+
         self._ensure_data_dir_exists()
-        (self.x_train, self.y_train), (self.x_test, self.y_test) = self._load_data()
-        self.x_train = self.x_train.astype("float32") / 255.0
-        self.x_test = self.x_test.astype("float32") / 255.0
-        self.x_train = self.x_train[..., tf.newaxis]
-        self.x_test = self.x_test[..., tf.newaxis]
-        self.y_train = self.y_train.astype("int64")
-        self.y_test = self.y_test.astype("int64")
+        self._download_if_needed()
+        self._load_data()
 
     def _ensure_data_dir_exists(self):
-        if not os.path.exists(self.data_dir):
-            os.makedirs(self.data_dir)
+        """Tworzy folder, jeśli nie istnieje"""
+        os.makedirs(self.data_dir, exist_ok=True)  # Zapewnia, że folder istnieje
+
+    def _is_valid_dataset(self):
+        """Sprawdza, czy plik istnieje i ma prawidłowe dane"""
+        if not os.path.exists(self.data_path):
+            return False
+        try:
+            with np.load(self.data_path) as data:
+                return all(key in data for key in ["x_train", "y_train", "x_test", "y_test"])
+        except Exception as e:
+            print(f"Corrupt dataset detected: {e}")
+            return False  # Plik istnieje, ale jest uszkodzony
+
+    def _download_if_needed(self):
+        """Pobiera MNIST, jeśli plik jest uszkodzony lub go nie ma"""
+        if not self._is_valid_dataset():
+            print(f"Downloading MNIST dataset to {self.data_path}...")
+            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+            np.savez(self.data_path, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
+            print("Download complete!")
 
     def _load_data(self):
-        data_path = os.path.join(self.data_dir, "mnist.npz")
-        if not os.path.exists(data_path):
-            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-            with open(data_path, "wb") as f:
-                np.savez(f, x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test)
-        else:
-            with np.load(data_path) as data:
-                x_train = data["x_train"]
-                y_train = data["y_train"]
-                x_test = data["x_test"]
-                y_test = data["y_test"]
-        return (x_train, y_train), (x_test, y_test)
+        """Ładuje dane z pliku"""
+        print(f"Loading dataset from {self.data_path}...")
+        with np.load(self.data_path) as data:
+            self.x_train, self.y_train = data["x_train"], data["y_train"]
+            self.x_test, self.y_test = data["x_test"], data["y_test"]
 
-    def __iter__(self):
-        # Zwracamy dane w partiach
-        for i in range(0, len(self.x_train), self.batch_size):
-            yield self.x_train[i:i+self.batch_size], self.y_train[i:i+self.batch_size]
+        # Normalizacja + dodanie kanału
+        self.x_train = np.expand_dims(self.x_train.astype("float32") / 255.0, axis=-1)
+        self.x_test = np.expand_dims(self.x_test.astype("float32") / 255.0, axis=-1)
+
+    def _map_fn(self, x, y):
+        return x, y
+
+    def get_dataset(self, train=True):
+        """Zwraca `tf.data.Dataset` dla treningu lub testowania (z optymalizacjami)"""
+        x, y = (self.x_train, self.y_train) if train else (self.x_test, self.y_test)
+        dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
+        if train:
+            dataset = dataset.shuffle(len(x))
+
+        dataset = dataset.batch(self.batch_size) \
+                        .cache() \
+                        .map(self._map_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE) \
+                        .prefetch(tf.data.experimental.AUTOTUNE)
+        
+        return dataset
+
