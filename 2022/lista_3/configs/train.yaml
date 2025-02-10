@@ -1,0 +1,8 @@
+defaults:
+  - model: lenet
+  - trainer: default
+  - logger: null
+  - optimizer: default  # Add optimizer to defaults
+  - paths: default  # Add paths to defaults
+
+

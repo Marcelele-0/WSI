@@ -1,43 +1,31 @@
 import tensorflow as tf
-from models.lenet import LeNet
 from data.mnist import DataLoader
+from metrics.accuracy import compute_accuracy  # Import the compute_accuracy function
+import hydra
+from omegaconf import DictConfig
+from hydra.utils import instantiate
 
-physical_devices = tf.config.list_physical_devices('GPU')
-if physical_devices:
-    try:
-        tf.config.experimental.set_memory_growth(physical_devices[0], True)
-        print("Using GPU")
-    except:
-        print("Failed to set memory growth for GPU")
-else:
-    print("Using CPU")
+@hydra.main(version_base=None, config_path="../configs", config_name="train")
+def train_model(cfg: DictConfig):
+    num_of_epochs = cfg.trainer.epochs
+    batch_size = cfg.trainer.batch_size
+    learning_rate = cfg.optimizer.lr
+    data_dir = cfg.paths.data_dir
+    model_save_dir = cfg.paths.model_save_dir
 
-def compute_accuracy(model, dataset):
-    """Oblicza dokładność modelu na podanym zbiorze"""
-    correct = 0
-    total = 0
-    for images, labels in dataset:
-        predictions = model(images)
-        predicted_labels = tf.argmax(predictions, axis=1)
-        labels = tf.cast(labels, tf.int64)  # Cast labels to int64
-        correct += tf.reduce_sum(tf.cast(predicted_labels == labels, tf.int32)).numpy()
-        total += labels.shape[0]
-    return correct / total
-
-def train_model(epochs=5, batch_size=32):
-    model = LeNet(num_classes=10)
+    model = instantiate(cfg.model)  # Instantiate the model using Hydra    
     model.build((None, 28, 28, 1))  # Inicjalizacja modelu
 
-    optimizer = tf.optimizers.Adam()
+    optimizer = tf.optimizers.Adam(learning_rate)  # Use cfg.optimizer.lr
     loss_fn = tf.losses.SparseCategoricalCrossentropy()
 
     # Ładowanie danych
-    data_loader = DataLoader(batch_size=batch_size, data_dir="data")
+    data_loader = DataLoader(batch_size, data_dir)
     train_dataset = data_loader.get_dataset(train=True)
     test_dataset = data_loader.get_dataset(train=False)
 
-    for epoch in range(epochs):
-        print(f"Epoch {epoch+1}/{epochs}")
+    for epoch in range(num_of_epochs):
+        print(f"Epoch {epoch+1}/{num_of_epochs}")
         epoch_loss = 0.0
         num_batches = 0
 
@@ -55,7 +43,10 @@ def train_model(epochs=5, batch_size=32):
         avg_loss = epoch_loss / num_batches
         accuracy = compute_accuracy(model, test_dataset)
         
-        print(f"Epoch {epoch+1}/{epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4%}")
+        print(f"Epoch {epoch+1}/{num_of_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4%}")
+
+    # Save the model
+    model.save(model_save_dir)
 
 if __name__ == "__main__":
-    train_model(epochs=10)
+    train_model()

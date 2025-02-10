@@ -1,0 +1,11 @@
+root_dir: "." # root directory of the project
+
+# path to data directory
+data_dir: ${paths.root_dir}/data/
+
+model_save_dir: ${paths.root_dir}/src/models/trained # path to model save directory
+
+# path to logging directory
+log_dir: ${paths.root_dir}/logs/
+
+
