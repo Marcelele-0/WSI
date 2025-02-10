@@ -1,7 +1,14 @@
 import tensorflow as tf
 
+
 def compute_accuracy(model, dataset):
-    """Oblicza dokładność modelu na podanym zbiorze"""
+    """
+    Compute the accuracy of the model on the dataset.
+
+    Args:
+    - model: A tf.keras.Model object
+    - dataset: A tf.data.Dataset object
+    """
     correct = 0
     total = 0
     for images, labels in dataset:

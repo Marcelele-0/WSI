@@ -1,6 +1,10 @@
 import tensorflow as tf
 
-class LeNet(tf.keras.Model): 
+
+class LeNet(tf.keras.Model):
+    """
+    A LeNet model for MNIST dataset.
+    """
     def __init__(self):
         super().__init__()
         self.conv1 = tf.keras.layers.Conv2D(6, 5, activation='tanh', padding='same')
@@ -12,7 +16,7 @@ class LeNet(tf.keras.Model):
         self.fc2 = tf.keras.layers.Dense(84, activation='tanh')
         self.fc3 = tf.keras.layers.Dense(10, activation='softmax')
 
-    def call(self, x):  # call zamiast __call__
+    def call(self, x):
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)
