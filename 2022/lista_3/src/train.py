@@ -25,7 +25,6 @@ def train_model(cfg: DictConfig):
     test_dataset = data_loader.get_dataset(train=False)
 
     for epoch in range(num_of_epochs):
-        print(f"Epoch {epoch+1}/{num_of_epochs}")
         epoch_loss = 0.0
         num_batches = 0
 
@@ -41,9 +40,10 @@ def train_model(cfg: DictConfig):
             num_batches += 1
 
         avg_loss = epoch_loss / num_batches
-        accuracy = compute_accuracy(model, test_dataset)
+        train_accuracy = compute_accuracy(model, train_dataset)  # Accuracy on the training dataset  # Accuracy on the test dataset
+        test_accuracy = compute_accuracy(model, test_dataset)  # Accuracy on the test dataset
         
-        print(f"Epoch {epoch+1}/{num_of_epochs} - Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4%}")
+        print(f"Epoch {epoch+1}/{num_of_epochs} - Loss: {avg_loss:.4f}, Train Accuracy: {train_accuracy:.4%}, Test Accuracy: {test_accuracy:.4%}")
 
     # Save the model
     model.save(model_save_dir)

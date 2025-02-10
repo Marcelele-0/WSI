@@ -1,9 +1,6 @@
 epochs: 10
 batch_size: 32
 
-accelerator: 'cpu'
-devices : 1
-
 
 
 
