@@ -1,5 +1,5 @@
 defaults:
-  - model: lenet
+  - model: googlenet # so far we have only lenet and googlenet
   - trainer: default
   - logger: null
   - optimizer: default # Add optimizer to defaults
