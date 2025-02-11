@@ -18,7 +18,7 @@ def train_model(cfg: DictConfig):
     learning_rate = cfg.optimizer.lr
     data_dir = cfg.paths.data_dir
     model_save_dir = cfg.paths.model_save_dir
-    model_name = cfg.model
+    model_name = cfg.model._target_.split(".")[-1]  # Extract the actual model name
     model = instantiate(cfg.model)
     model.build((None, 28, 28, 1))
 
