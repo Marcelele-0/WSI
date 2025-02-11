@@ -1,10 +1,12 @@
 import heapq
+
 from puzzle.state import reconstruct_path
 from utils.get_neighbors import get_neighbors
 
+
 def a_star(start, goal_state, heuristic_func, puzzle_size):
-    """
-    Solve the puzzle using the A* algorithm.
+    """Solve the puzzle using the A* algorithm.
+
     Returns the path, the number of visited states, and the number of steps.
     """
     frontier = []

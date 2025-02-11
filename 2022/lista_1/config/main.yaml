@@ -1,7 +1,7 @@
 # target: src/main.py
 
 puzzle:
-  size: 4  # 4x4 grid for 15-puzzle
+  size: 4 # 4x4 grid for 15-puzzle
 
 heuristics:
   manhattan_distance: true
@@ -9,5 +9,5 @@ heuristics:
   misplaced_tiles: false # not recommended
 
 solver:
-  max_iterations: 1000000  # prevent infinite loops
-  timeout_seconds: 30  # maximum solving time
+  max_iterations: 1000000 # prevent infinite loops
+  timeout_seconds: 30 # maximum solving time

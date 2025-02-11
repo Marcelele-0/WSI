@@ -12,11 +12,13 @@ def manhattan_distance(state):
         distance += abs(target_row - current_row) + abs(target_col - current_col)
     return distance
 
+
 def misplaced_tiles(state):
     """
     Heuristic: calculate the number of misplaced tiles for the puzzle.
     """
     return sum(1 for i, value in enumerate(state) if value != 0 and value != i + 1)
+
 
 def linear_conflict(state):
     """
@@ -48,4 +50,3 @@ def linear_conflict(state):
                     conflict_count += 2
 
     return conflict_count
-

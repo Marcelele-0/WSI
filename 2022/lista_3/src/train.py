@@ -1,9 +1,9 @@
+import hydra
 import tensorflow as tf
 from data.mnist import DataLoader
-from metrics.accuracy import compute_accuracy
-import hydra
-from omegaconf import DictConfig
 from hydra.utils import instantiate
+from metrics.accuracy import compute_accuracy
+from omegaconf import DictConfig
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train")
@@ -13,6 +13,7 @@ def train_model(cfg: DictConfig):
     learning_rate = cfg.optimizer.lr
     data_dir = cfg.paths.data_dir
     model_save_dir = cfg.paths.model_save_dir
+    model_name = cfg.model.name
 
     model = instantiate(cfg.model)
     model.build((None, 28, 28, 1))
@@ -48,7 +49,8 @@ def train_model(cfg: DictConfig):
             f"Train Accuracy: {train_accuracy:.4%}, Test Accuracy: {test_accuracy:.4%}"
         )
 
-    model.save(model_save_dir)
+    model_save_path = f"{model_save_dir}/{model_name}"
+    model.save(model_save_path)
 
 
 if __name__ == "__main__":

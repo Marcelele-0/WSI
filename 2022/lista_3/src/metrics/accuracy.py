@@ -2,8 +2,7 @@ import tensorflow as tf
 
 
 def compute_accuracy(model, dataset):
-    """
-    Compute the accuracy of the model on the dataset.
+    """Compute the accuracy of the model on the dataset.
 
     Args:
     - model: A tf.keras.Model object
