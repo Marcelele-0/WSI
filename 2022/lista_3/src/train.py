@@ -1,9 +1,11 @@
 import hydra
+import numpy as np
 import tensorflow as tf
 from data.mnist import DataLoader
 from hydra.utils import instantiate
 from metrics.accuracy import compute_accuracy
 from omegaconf import DictConfig
+from sklearn.utils import class_weight
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train")
@@ -29,31 +31,29 @@ def train_model(cfg: DictConfig):
     train_dataset = data_loader.get_dataset(train=True)
     test_dataset = data_loader.get_dataset(train=False)
 
-    for epoch in range(num_of_epochs):
-        epoch_loss = 0.0
-        num_batches = 0
+    # Compute class weights
+    y_train = np.concatenate([y for _, y in train_dataset], axis=0)
+    class_weights = class_weight.compute_class_weight(
+        "balanced", classes=np.unique(y_train), y=y_train
+    )
+    class_weights_dict = {i: class_weights[i] for i in range(len(class_weights))}
 
-        for images, labels in train_dataset:
-            with tf.GradientTape() as tape:
-                predictions = model(images)
-                loss = tf.reduce_mean(loss_fn(labels, predictions))
+    model.compile(optimizer=optimizer, loss=loss_fn, metrics=["accuracy"])
 
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    model.fit(
+        train_dataset,
+        epochs=num_of_epochs,
+        validation_data=test_dataset,
+        class_weight=class_weights_dict,
+    )
 
-            epoch_loss += loss.numpy()
-            num_batches += 1
+    train_accuracy = compute_accuracy(model, train_dataset)
+    test_accuracy = compute_accuracy(model, test_dataset)
 
-        avg_loss = epoch_loss / num_batches
-        train_accuracy = compute_accuracy(model, train_dataset)
-        test_accuracy = compute_accuracy(model, test_dataset)
-
-        print(
-            f"Epoch {epoch + 1}/{num_of_epochs} - Loss: {avg_loss:.4f}, "
-            f"Train Accuracy: {train_accuracy:.4%}, Test Accuracy: {test_accuracy:.4%}"
-        )
+    print(f"Final - Train Accuracy: {train_accuracy:.4%}, Test Accuracy: {test_accuracy:.4%}")
 
     model_save_path = f"{model_save_dir}/{model_name}"
+    print(f"Saving model to {model_save_path}")  # Debug print
     model.save(model_save_path)
 
 

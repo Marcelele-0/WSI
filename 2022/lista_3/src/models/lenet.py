@@ -12,7 +12,9 @@ class LeNet(tf.keras.Model):
         self.pool2 = tf.keras.layers.AveragePooling2D(pool_size=(2, 2), strides=2)
         self.flatten = tf.keras.layers.Flatten()
         self.fc1 = tf.keras.layers.Dense(120, activation="tanh")
+        self.dropout1 = tf.keras.layers.Dropout(0.5)
         self.fc2 = tf.keras.layers.Dense(84, activation="tanh")
+        self.dropout2 = tf.keras.layers.Dropout(0.5)
         self.fc3 = tf.keras.layers.Dense(10, activation="softmax")
 
     def call(self, x):
@@ -22,5 +24,7 @@ class LeNet(tf.keras.Model):
         x = self.pool2(x)
         x = self.flatten(x)
         x = self.fc1(x)
+        x = self.dropout1(x)
         x = self.fc2(x)
+        x = self.dropout2(x)
         return self.fc3(x)
