@@ -8,13 +8,17 @@ from omegaconf import DictConfig
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train")
 def train_model(cfg: DictConfig):
+    """Train the model based on the provided configuration.
+
+    Args:
+        cfg (DictConfig): Configuration composed by Hydra.
+    """
     num_of_epochs = cfg.trainer.epochs
     batch_size = cfg.trainer.batch_size
     learning_rate = cfg.optimizer.lr
     data_dir = cfg.paths.data_dir
     model_save_dir = cfg.paths.model_save_dir
-    model_name = cfg.model.name
-
+    model_name = cfg.model
     model = instantiate(cfg.model)
     model.build((None, 28, 28, 1))
 
