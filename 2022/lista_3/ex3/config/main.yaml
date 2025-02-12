@@ -1,0 +1,10 @@
+normalisation:
+  method: 'L1'  # Możliwe wartości: 'L1', 'L2'
+
+training:
+  epochs: 10000
+  learning_rate: 0.1
+
+activation:
+  function: 'sigmoid'  # Możliwe wartości: 'sigmoid', 'relu'
+  derivative: 'sigmoid_derivative'  # Możliwe wartości: 'sigmoid_derivative', 'relu_derivative'
