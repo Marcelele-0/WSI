@@ -1,25 +1,23 @@
 import numpy as np
 
-# Funkcja aktywacji - ReLU
 def relu(x):
-    """Funkcja aktywacji - ReLU
+    """Activation function - ReLU
 
     Args:
-        x (float or np.array): wartość wejściowa
+        x (float or np.array): Input value
 
     Returns:
-        float or np.array: wartość funkcji ReLU
+        float or np.array: Result of the ReLU function
     """
     return np.maximum(0, x)
 
-# Pochodna ReLU
 def relu_derivative(x):
-    """Pochodna funkcji aktywacji ReLU
+    """Derivative of the ReLU activation function
 
     Args:
-        x (float or np.array): wartość wejściowa
+        x (float or np.array): Input value
 
     Returns:
-        float or np.array: pochodna funkcji ReLU
+        float or np.array: Derivative of the ReLU function
     """
     return np.where(x > 0, 1, 0)

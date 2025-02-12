@@ -1,30 +1,28 @@
 import numpy as np
 
-import numpy as np
-
 def sigmoid(x):
     """
-    Funkcja aktywacji - Sigmoid.
+    Activation function - Sigmoid.
 
     Args:
-        x (float lub np.array): Oryginalna wartość wejściowa.
+        x (float or np.array): Original input value.
 
     Returns:
-        float lub np.array: Wynik działania funkcji sigmoidalnej.
+        float or np.array: Result of the sigmoid function.
     """
     return 1 / (1 + np.exp(-x))
 
 def sigmoid_derivative(x):
     """
-    Pochodna funkcji sigmoidalnej, obliczana na podstawie oryginalnego x.
+    Derivative of the sigmoid function, calculated based on the original x.
 
-    Wzór: sigma'(x) = sigma(x) * (1 - sigma(x))
+    Formula: sigma'(x) = sigma(x) * (1 - sigma(x))
 
     Args:
-        x (float lub np.array): Oryginalna wartość wejściowa.
+        x (float or np.array): Original input value.
 
     Returns:
-        float lub np.array: Pochodna funkcji sigmoidalnej.
+        float or np.array: Derivative of the sigmoid function.
     """
     s = sigmoid(x)
     return s * (1 - s)

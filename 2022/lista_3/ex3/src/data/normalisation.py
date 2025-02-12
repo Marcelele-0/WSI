@@ -1,7 +1,7 @@
 import numpy as np
 
-# Funkcja normalizująca dane
 def normalize_data(x1, x2, method):
+    """Normalize data using the specified method."""
     if method == 'L1':
         norm = abs(x1) + abs(x2)
     elif method == 'L2':
