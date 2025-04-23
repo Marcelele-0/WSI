@@ -1,6 +1,6 @@
 import hydra
 from algoritghm.a_star import a_star
-from metrics.heuretics_handler import combined_heuristic, get_heuristics, heuristic_func
+from metrics.heuretics_handler import combined_heuristic, get_heuristics
 from omegaconf import DictConfig
 from puzzle.state import generate_goal_state, generate_random_state, print_state
 
@@ -21,7 +21,7 @@ def main(cfg: DictConfig):
 
     if heuristics:
         path, visited_count, steps = a_star(
-            state, goal_state, lambda state: heuristic_func(state, heuristics), puzzle_size
+            state, goal_state, lambda state: combined_heuristic(state, heuristics), puzzle_size
         )
         if path:
             print("Solution found!")

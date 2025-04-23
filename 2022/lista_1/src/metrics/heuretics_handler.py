@@ -18,6 +18,3 @@ def get_heuristics(cfg):
     return heuristics
 
 
-def heuristic_func(state, heuristics):
-    """Calculate the heuristic value for the given state."""
-    return combined_heuristic(state, heuristics)
