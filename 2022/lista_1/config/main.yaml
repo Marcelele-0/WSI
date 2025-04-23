@@ -8,6 +8,4 @@ heuristics:
   linear_conflict: true
   misplaced_tiles: false # not recommended
 
-solver:
-  max_iterations: 1000000 # prevent infinite loops
-  timeout_seconds: 30 # maximum solving time
+

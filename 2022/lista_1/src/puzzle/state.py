@@ -4,23 +4,15 @@ from utils.is_solvable import is_solvable
 
 
 def generate_random_state(puzzle_size):
-    """Generate a random state for the puzzle."""
+    """Generate a random, solvable state with 0 (empty tile) in the bottom-right corner."""
+    N = puzzle_size * puzzle_size
+    tiles = list(range(1, N))  # [1, 2, …, N-1]
 
-    state = [i for i in range(0, puzzle_size * puzzle_size)]  # we include 0 as the empty tile
-
-    random.shuffle(state)
-
-    state_tuple = tuple(state)
-
-    # we check if the state is solvable
-    if not is_solvable(state_tuple):
-        # we swap 2 random tiles (not including the empty tile 0)
-        i, j = random.sample(range(1, puzzle_size * puzzle_size), 2)
-        state[i], state[j] = state[j], state[i]
-        state_tuple = tuple(state)
-
-    return state_tuple
-
+    while True:
+        random.shuffle(tiles)
+        state = tiles + [0]      # dokładamy 0 na koniec
+        if is_solvable(state):
+            return tuple(state)
 
 def generate_goal_state(grid_size):
     """Generate the goal state for the puzzle."""
