@@ -299,7 +299,6 @@ linear_conflict,97,144557,26
 linear_conflict,98,33095,20
 linear_conflict,99,33158,20
 linear_conflict,100,105269,24
-heuristic,run,visited,steps
 manhattan_distance,1,524,20
 manhattan_distance,2,92,18
 manhattan_distance,3,324,18
