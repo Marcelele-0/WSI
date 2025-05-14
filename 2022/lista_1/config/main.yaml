@@ -5,7 +5,7 @@ puzzle:
 
 heuristics:
   manhattan_distance: true
-  linear_conflict: fasle
+  linear_conflict: true
   misplaced_tiles: false # not recommended
 
 

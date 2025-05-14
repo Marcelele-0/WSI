@@ -14,8 +14,8 @@ heuristics_list = [
     {"manhattan_distance": False, "linear_conflict": True, "misplaced_tiles": False},
 ]
 
-num_runs_per_config = 50
-num_of_processes = 20
+num_runs_per_config = 3
+num_of_processes = 15
 output_file = "results.csv"
 
 
@@ -49,7 +49,7 @@ def run_experiment(heuristics, run_id):
 def run_experiments():
     os.chdir(os.path.dirname(__file__) + "/..")  # ustaw katalog roboczy na główny katalog projektu
 
-    with open(output_file, 'w', newline='') as csvfile:
+    with open(output_file, 'a', newline='') as csvfile:
         fieldnames = ["heuristic", "run", "visited", "steps"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -69,7 +69,7 @@ def run_experiments():
                 if experiment_result:
                     writer.writerow(experiment_result)
 
-    print(f"\n✅ Zapisano wyniki do: {output_file}")
+    print(f"\nZapisano wyniki do: {output_file}")
 
 
 if __name__ == "__main__":
