@@ -14,9 +14,9 @@ heuristics_list = [
     {"manhattan_distance": False, "linear_conflict": True, "misplaced_tiles": False},
 ]
 
-num_runs_per_config = 3
-num_of_processes = 15
-output_file = "results.csv"
+num_runs_per_config = 1
+num_of_processes = 10
+output_file = "results4.csv"
 
 
 def run_experiment(heuristics, run_id):
