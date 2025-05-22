@@ -7,28 +7,66 @@
 #include <stdbool.h>
 #include "board.h"  // Include the board.h header file for board-related functions
 
-int player, opponent, searchDepth = 3;
+int player, opponent, searchDepth;
 
 int evaluateBoard() {
-  // Basic stub: always return 0
+  if (winCheck(player)) return 1000;
+  if (winCheck(3 - player)) return -1000;
   return 0;
 }
 
 int minimax(int depth, int alpha, int beta, bool maximizing) {
-  // Basic stub: always return 0
-  return 0;
+  if (depth == 0 || winCheck(player) || winCheck(3 - player)) {
+    return evaluateBoard();
+  }
+
+  if (maximizing) {
+    int maxEval = -10000;
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        if (board[i][j] == 0) {
+          board[i][j] = player;
+          int eval = minimax(depth - 1, alpha, beta, false);
+          board[i][j] = 0;
+          if (eval > maxEval) maxEval = eval;
+        }
+      }
+    }
+    return maxEval;
+  } else {
+    int minEval = 10000;
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        if (board[i][j] == 0) {
+          board[i][j] = 3 - player;
+          int eval = minimax(depth - 1, alpha, beta, true);
+          board[i][j] = 0;
+          if (eval < minEval) minEval = eval;
+        }
+      }
+    }
+    return minEval;
+  }
 }
 
 int bestMove() {
-  // Basic stub: always return the first available move
+  // Mega podstawowa wersja: wybierz ruch z najlepszym wynikiem minimax
+  int bestScore = -10000;
+  int move = 0;
   for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 5; j++) {
-          if (board[i][j] == 0) {
-              return (i + 1) * 10 + (j + 1);
-          }
+    for (int j = 0; j < 5; j++) {
+      if (board[i][j] == 0) {
+        board[i][j] = player;
+        int score = minimax(searchDepth - 1, -10000, 10000, false);
+        board[i][j] = 0;
+        if (score > bestScore) {
+          bestScore = score;
+          move = (i + 1) * 10 + (j + 1);
+        }
       }
+    }
   }
-  return 0;
+  return move;
 }
 
 int main(int argc, char *argv[]) {
@@ -43,6 +81,8 @@ int main(int argc, char *argv[]) {
     printf("Usage: %s <IP> <PORT> <PLAYER_ID> <NAME> <DEPTH>\n", argv[0]);
     return -1;
   }
+  
+  searchDepth = atoi(argv[5]);
 
   // Create socket
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
