@@ -7,149 +7,231 @@
 #include <arpa/inet.h>
 #include "board.h"   // Deklaruje: board[5][5], setBoard(), setMove(), winCheck(), loseCheck()
 
-#define INF 1000000  // Wielka wartość reprezentująca "nieskończoność" w algorytmie
+#define INF 1000000
 
-int playerId, oppId, searchDepth;
-char playerName[10];
+extern int  board[5][5];      // 0 = puste, 1/2 = pionki graczy
+extern int  playerId, oppId;  
+extern int  searchDepth;
+extern void setMove(int r, int c, int pid);
 
-/* Funkcja oceny heurystycznej stanu planszy */
+// -----------------------------------------------------------------------------
+// lineCount: policz w segmencie 4 pól ile jest pid i ile przeciwnika
+// -----------------------------------------------------------------------------
+static void lineCount(int pid, int *outMy, int *outOpp,
+                      int sr, int sc, int dr, int dc)
+{
+    int cm = 0, co = 0;
+    for (int i = 0; i < 4; i++) {
+        int r = sr + dr*i, c = sc + dc*i;
+        if      (board[r][c] == pid)    cm++;
+        else if (board[r][c] != 0)      co++;
+    }
+    *outMy  = cm;
+    *outOpp = co;
+}
+
+// -----------------------------------------------------------------------------
+// hasFour: czy istnieje gdziekolwiek na planszy 4 w linii dla pid?
+// -----------------------------------------------------------------------------
+static bool hasFour(int pid)
+{
+    int dr[4] = {0,1,1,1}, dc[4] = {1,0,1,-1};
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 5; c++) {
+            for (int d = 0; d < 4; d++) {
+                int endR = r + dr[d]*3, endC = c + dc[d]*3;
+                if (endR<0||endR>4||endC<0||endC>4) continue;
+                int cm, co;
+                lineCount(pid, &cm, &co, r, c, dr[d], dc[d]);
+                if (cm == 4 && co == 0) return true;
+            }
+        }
+    }
+    return false;
+}
+
+// -----------------------------------------------------------------------------
+// hasOnlyThree: czy jest gdziekolwiek na planszy dokładnie 3 w linii dla pid?
+// -----------------------------------------------------------------------------
+static bool hasOnlyThree(int pid)
+{
+    int dr[4] = {0,1,1,1}, dc[4] = {1,0,1,-1};
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 5; c++) {
+            for (int d = 0; d < 4; d++) {
+                int endR = r + dr[d]*3, endC = c + dc[d]*3;
+                if (endR<0||endR>4||endC<0||endC>4) continue;
+                int cm, co;
+                lineCount(pid, &cm, &co, r, c, dr[d], dc[d]);
+                if (cm == 3 && co == 0) return true;
+            }
+        }
+    }
+    return false;
+}
+
+// -----------------------------------------------------------------------------
+// evaluateBoard: heurystyka z otwartymi trójkami i widełkami
+// -----------------------------------------------------------------------------
 int evaluateBoard() {
     int score = 0;
-    // Sprawdzamy wszystkie możliwe segmenty długości 4: kierunki (0,1), (1,0), (1,1), (1,-1)
-    int dr[4] = {0, 1, 1, 1};
-    int dc[4] = {1, 0, 1,-1};
-    for(int r = 0; r < 5; r++){
-        for(int c = 0; c < 5; c++){
-            for(int d = 0; d < 4; d++){
-                int endR = r + dr[d]*3;
-                int endC = c + dc[d]*3;
-                // Sprawdź, czy segment nie wychodzi poza planszę
-                if(endR < 0 || endR > 4 || endC < 0 || endC > 4) continue;
+    int dr[4] = {0,1,1,1}, dc[4] = {1,0,1,-1};
+    int openThrees = 0;
+
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 5; c++) {
+            for (int d = 0; d < 4; d++) {
+                int endR = r + dr[d]*3, endC = c + dc[d]*3;
+                if (endR<0||endR>4||endC<0||endC>4) continue;
+
                 int countMy = 0, countOpp = 0;
-                for(int i = 0; i < 4; i++){
-                    int nr = r + dr[d]*i;
-                    int nc = c + dc[d]*i;
-                    if(board[nr][nc] == playerId) countMy++;
-                    else if(board[nr][nc] == oppId) countOpp++;
+                for (int i = 0; i < 4; i++) {
+                    int nr = r + dr[d]*i, nc = c + dc[d]*i;
+                    if      (board[nr][nc] == playerId) countMy++;
+                    else if (board[nr][nc] == oppId)    countOpp++;
                 }
-                // Jeśli nie ma symboli przeciwnika w tej linii:
-                if(countOpp == 0) {
-                    if(countMy == 3) {
-                        // Dokładnie 3 nasze symbole w linii: kara (przegrana)
-                        score -= 1000;
-                    } else {
-                        // Dodajemy punkty = 50 * liczba naszych symboli (mierzy rozwój ciągu)
-                        score += 50 * countMy;
+
+                // moje linie
+                if (countOpp == 0) {
+                    if      (countMy == 4) score += 100000;
+                    else if (countMy == 3) {
+                        // czy konczymy w trójkę?
+                        bool consec = false;
+                        for (int i = 0; i < 2; i++) {
+                            int nr1 = r + dr[d]*i,    nc1 = c + dc[d]*i;
+                            int nr2 = r + dr[d]*(i+1),nc2 = c + dc[d]*(i+1);
+                            int nr3 = r + dr[d]*(i+2),nc3 = c + dc[d]*(i+2);
+                            if (board[nr1][nc1]==playerId &&
+                                board[nr2][nc2]==playerId &&
+                                board[nr3][nc3]==playerId) {
+                                consec = true; break;
+                            }
+                        }
+                        if (consec) {
+                            score -= 10000;
+                        } else {
+                            score += 5000;
+                            openThrees++;
+                        }
                     }
+                    else if (countMy == 2) score += 20;
+                    else if (countMy == 1) score += 10;
                 }
-                // Jeśli nie ma naszych symboli w tej linii:
-                if(countMy == 0) {
-                    if(countOpp == 3) {
-                        // Przeciwnik ma 3 w linii: dobry stan dla nas (przeciwnik przegrał)
-                        score += 1000;
-                    } else {
-                        // Kara = 50 * liczba symboli przeciwnika (potencjalne zagrożenie)
-                        score -= 50 * countOpp;
-                    }
+
+                // linie przeciwnika
+                if (countMy == 0) {
+                    if      (countOpp == 4) score -= 100000;
+                    else if (countOpp == 3) score += 10000;
+                    else if (countOpp == 2) score -= 20;
+                    else if (countOpp == 1) score -= 10;
                 }
             }
         }
     }
+
+    // bonus za widełki
+    if (openThrees >= 2) {
+        score += 20000;
+    }
+
     return score;
 }
 
-/* Rekurencyjny algorytm minimax z przycinaniem alfa-beta */
+// -----------------------------------------------------------------------------
+// minimax z alfa-beta oraz terminalami 4 i 3
+// -----------------------------------------------------------------------------
 int minimax(int depth, int alpha, int beta, bool isMaximizing) {
-    // Terminalne sprawdzenie końca gry:
-    // Jeśli wygrywa nasz gracz lub przeciwnik uzyskał 3 (czyli przegrał):
-    if(winCheck(playerId) || loseCheck(oppId)) {
-        return +INF;  // Nasze zwycięstwo
-    }
-    if(loseCheck(playerId) || winCheck(oppId)) {
-        return -INF;  // Nasza porażka
-    }
-    // Jeśli osiągnięta głębokość lub nie ma już ruchów, zwracamy ocenę heurystyczną:
-    if(depth == 0) {
+    // terminalne zwycięstwa/przegrane
+    if (hasFour(playerId))     return +INF;
+    if (hasOnlyThree(playerId))return -INF;
+    if (hasFour(oppId))        return -INF;
+    if (hasOnlyThree(oppId))   return +INF;
+
+    if (depth == 0) {
         return evaluateBoard();
     }
-    if(isMaximizing) {
+
+    if (isMaximizing) {
         int bestVal = -INF;
-        // Maksymalizujemy nasz ruch:
-        for(int i = 0; i < 5; i++){
-            for(int j = 0; j < 5; j++){
-                if(board[i][j] == 0) {
-                    setMove(i, j, playerId);
-                    int val = minimax(depth - 1, alpha, beta, false);
-                    setMove(i, j, 0);  // Cofnięcie ruchu (pusty)
-                    if(val > bestVal) bestVal = val;
-                    if(bestVal > alpha) alpha = bestVal;
-                    if(beta <= alpha) {
-                        // Pruning: dalsze dzieci nie muszą być brane pod uwagę
-                        i = 5; j = 5;  // wyjście z obu pętli
-                        break;
-                    }
-                }
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (board[i][j] != 0) continue;
+                setMove(i, j, playerId);
+                int val = minimax(depth-1, alpha, beta, false);
+                setMove(i, j, 0);
+                if (val > bestVal) bestVal = val;
+                if (bestVal > alpha) alpha = bestVal;
+                if (beta <= alpha) break;
             }
         }
         return bestVal;
     } else {
         int bestVal = INF;
-        // Minimalizujemy dla ruchu przeciwnika:
-        for(int i = 0; i < 5; i++){
-            for(int j = 0; j < 5; j++){
-                if(board[i][j] == 0) {
-                    setMove(i, j, oppId);
-                    int val = minimax(depth - 1, alpha, beta, true);
-                    setMove(i, j, 0);
-                    if(val < bestVal) bestVal = val;
-                    if(bestVal < beta) beta = bestVal;
-                    if(beta <= alpha) {
-                        i = 5; j = 5; 
-                        break;
-                    }
-                }
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (board[i][j] != 0) continue;
+                setMove(i, j, oppId);
+                int val = minimax(depth-1, alpha, beta, true);
+                setMove(i, j, 0);
+                if (val < bestVal) bestVal = val;
+                if (bestVal < beta) beta = bestVal;
+                if (beta <= alpha) break;
             }
         }
         return bestVal;
     }
 }
 
-/* Znajdź najlepszy ruch (root minimax + losowe rozstrzyganie remisów) */
-void findBestMove(int *outRow, int *outCol) {
-    int bestVal = -INF;
-    int bestMovesCount = 0;
-    int bestMoves[25][2];
-    // Przeszukujemy wszystkie legalne ruchy:
-    for(int i = 0; i < 5; i++){
-        for(int j = 0; j < 5; j++){
-            if(board[i][j] == 0) {
-                setMove(i, j, playerId);
-                int moveVal = minimax(searchDepth - 1, -INF, INF, false);
+// -----------------------------------------------------------------------------
+// findBestMove zgodnie z regułami gry
+// -----------------------------------------------------------------------------
+void findBestMove(int *outR, int *outC) {
+    int bestVal = -INF, count = 0;
+    int cand[25][2];
+
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (board[i][j] != 0) continue;
+
+            setMove(i, j, playerId);
+
+            // 1) natychmiast wygrana?
+            if (hasFour(playerId)) {
+                *outR = i; *outC = j;
                 setMove(i, j, 0);
-                if(moveVal > bestVal) {
-                    bestVal = moveVal;
-                    bestMovesCount = 0;
-                    bestMoves[bestMovesCount][0] = i;
-                    bestMoves[bestMovesCount][1] = j;
-                    bestMovesCount++;
-                } else if(moveVal == bestVal) {
-                    // remis: kolejny dobry ruch
-                    bestMoves[bestMovesCount][0] = i;
-                    bestMoves[bestMovesCount][1] = j;
-                    bestMovesCount++;
-                }
+                return;
+            }
+            // 2) tworzy przegrywającą trójkę?
+            if (hasOnlyThree(playerId)) {
+                setMove(i, j, 0);
+                continue;
+            }
+
+            // 3) minimax
+            int val = minimax(searchDepth-1, -INF, INF, false);
+            setMove(i, j, 0);
+
+            if (val > bestVal) {
+                bestVal = val;
+                count = 0;
+                cand[count][0] = i;
+                cand[count][1] = j;
+                count++;
+            } else if (val == bestVal) {
+                cand[count][0] = i;
+                cand[count][1] = j;
+                count++;
             }
         }
     }
-    // Losowe rozstrzygnięcie między najlepszymi
-    if(bestMovesCount > 0) {
-        int choice = rand() % bestMovesCount;
-        *outRow = bestMoves[choice][0];
-        *outCol = bestMoves[choice][1];
+
+    if (count > 0) {
+        int idx = rand() % count;
+        *outR = cand[idx][0];
+        *outC = cand[idx][1];
     } else {
-        // Brak ruchu (powinno być zablokowane wcześniej)
-        *outRow = -1;
-        *outCol = -1;
+        *outR = -1;
+        *outC = -1;
     }
 }
 
