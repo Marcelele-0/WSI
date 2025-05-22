@@ -5,33 +5,53 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "board.h"   // Deklaruje: board[5][5], setBoard(), setMove(), winCheck(), loseCheck()
+#include "board.h"  
 
 #define INF 1000000
 
-extern int  board[5][5];      // 0 = puste, 1/2 = pionki graczy
-extern int  playerId, oppId;  
+extern int  board[5][5];   // 0 = puste, 1/2 = gracze
+extern int  playerId, oppId;
 extern int  searchDepth;
-extern void setMove(int r, int c, int pid);
+
+/**
+ * Ustawia ruch zakodowany jako dwucyfrowa liczba:
+ * dziesiątki = wiersz+1 (1–5), jedności = kolumna+1 (1–5).
+ * Zwraca false, jeśli poza planszą lub pole zajęte.
+ */
+bool setMove(int move, int player) {
+    int i = (move / 10) - 1;
+    int j = (move % 10) - 1;
+    if (i < 0 || i > 4 || j < 0 || j > 4) return false;
+    if (board[i][j] != 0)                return false;
+    board[i][j] = player;
+    return true;
+}
+
+/**
+ * Zdejmuje pionek z planszy, używane do cofania ruchu.
+ */
+static void undoMove(int r, int c) {
+    board[r][c] = 0;
+}
 
 // -----------------------------------------------------------------------------
-// lineCount: policz w segmencie 4 pól ile jest pid i ile przeciwnika
+// Zlicza w 4-pólkowym segmencie, ile Twoich i ile przeciwnika.
 // -----------------------------------------------------------------------------
 static void lineCount(int pid, int *outMy, int *outOpp,
                       int sr, int sc, int dr, int dc)
 {
     int cm = 0, co = 0;
-    for (int i = 0; i < 4; i++) {
-        int r = sr + dr*i, c = sc + dc*i;
-        if      (board[r][c] == pid)    cm++;
-        else if (board[r][c] != 0)      co++;
+    for (int k = 0; k < 4; k++) {
+        int r = sr + dr*k, c = sc + dc*k;
+        if      (board[r][c] == pid) cm++;
+        else if (board[r][c] != 0)   co++;
     }
     *outMy  = cm;
     *outOpp = co;
 }
 
 // -----------------------------------------------------------------------------
-// hasFour: czy istnieje gdziekolwiek na planszy 4 w linii dla pid?
+// Czy gdziekolwiek jest 4 w linii (czysta czwórka) dla pid?
 // -----------------------------------------------------------------------------
 static bool hasFour(int pid)
 {
@@ -51,7 +71,7 @@ static bool hasFour(int pid)
 }
 
 // -----------------------------------------------------------------------------
-// hasOnlyThree: czy jest gdziekolwiek na planszy dokładnie 3 w linii dla pid?
+// Czy gdziekolwiek jest dokładnie 3 w linii (czysta trójka) dla pid?
 // -----------------------------------------------------------------------------
 static bool hasOnlyThree(int pid)
 {
@@ -71,7 +91,7 @@ static bool hasOnlyThree(int pid)
 }
 
 // -----------------------------------------------------------------------------
-// evaluateBoard: heurystyka z otwartymi trójkami i widełkami
+// Heurystyka: premie/kar za 1–4 w linii, otwarte trójki, widełki…
 // -----------------------------------------------------------------------------
 int evaluateBoard() {
     int score = 0;
@@ -85,32 +105,33 @@ int evaluateBoard() {
                 if (endR<0||endR>4||endC<0||endC>4) continue;
 
                 int countMy = 0, countOpp = 0;
-                for (int i = 0; i < 4; i++) {
-                    int nr = r + dr[d]*i, nc = c + dc[d]*i;
+                for (int k = 0; k < 4; k++) {
+                    int nr = r + dr[d]*k, nc = c + dc[d]*k;
                     if      (board[nr][nc] == playerId) countMy++;
                     else if (board[nr][nc] == oppId)    countOpp++;
                 }
 
-                // moje linie
+                // Analiza moich segmentów
                 if (countOpp == 0) {
                     if      (countMy == 4) score += 100000;
                     else if (countMy == 3) {
-                        // czy konczymy w trójkę?
+                        // Czy są 3 obok siebie?
                         bool consec = false;
-                        for (int i = 0; i < 2; i++) {
-                            int nr1 = r + dr[d]*i,    nc1 = c + dc[d]*i;
-                            int nr2 = r + dr[d]*(i+1),nc2 = c + dc[d]*(i+1);
-                            int nr3 = r + dr[d]*(i+2),nc3 = c + dc[d]*(i+2);
-                            if (board[nr1][nc1]==playerId &&
-                                board[nr2][nc2]==playerId &&
-                                board[nr3][nc3]==playerId) {
-                                consec = true; break;
+                        for (int k = 0; k < 2; k++) {
+                            int r1=r+dr[d]*k,    c1=c+dc[d]*k;
+                            int r2=r+dr[d]*(k+1),c2=c+dc[d]*(k+1);
+                            int r3=r+dr[d]*(k+2),c3=c+dc[d]*(k+2);
+                            if (board[r1][c1]==playerId &&
+                                board[r2][c2]==playerId &&
+                                board[r3][c3]==playerId) {
+                                consec = true;
+                                break;
                             }
                         }
                         if (consec) {
-                            score -= 10000;
+                            score -= 10000;  // przegrana trójka
                         } else {
-                            score += 5000;
+                            score += 5000;   // otwarta trójka
                             openThrees++;
                         }
                     }
@@ -118,7 +139,7 @@ int evaluateBoard() {
                     else if (countMy == 1) score += 10;
                 }
 
-                // linie przeciwnika
+                // Analiza segmentów przeciwnika
                 if (countMy == 0) {
                     if      (countOpp == 4) score -= 100000;
                     else if (countOpp == 3) score += 10000;
@@ -129,7 +150,7 @@ int evaluateBoard() {
         }
     }
 
-    // bonus za widełki
+    // Widełki: dwa lub więcej otwartych trójek
     if (openThrees >= 2) {
         score += 20000;
     }
@@ -138,88 +159,87 @@ int evaluateBoard() {
 }
 
 // -----------------------------------------------------------------------------
-// minimax z alfa-beta oraz terminalami 4 i 3
+// Minimax z alfa-beta i terminalami na 4/3
 // -----------------------------------------------------------------------------
 int minimax(int depth, int alpha, int beta, bool isMaximizing) {
-    // terminalne zwycięstwa/przegrane
-    if (hasFour(playerId))     return +INF;
-    if (hasOnlyThree(playerId))return -INF;
-    if (hasFour(oppId))        return -INF;
-    if (hasOnlyThree(oppId))   return +INF;
+    if (hasFour(playerId))      return +INF;
+    if (hasOnlyThree(playerId)) return -INF;
+    if (hasFour(oppId))         return -INF;
+    if (hasOnlyThree(oppId))    return +INF;
 
     if (depth == 0) {
         return evaluateBoard();
     }
 
     if (isMaximizing) {
-        int bestVal = -INF;
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (board[i][j] != 0) continue;
-                setMove(i, j, playerId);
+        int best = -INF;
+        for (int r = 0; r < 5; r++) {
+            for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
+                int move = (r+1)*10 + (c+1);
+                setMove(move, playerId);
                 int val = minimax(depth-1, alpha, beta, false);
-                setMove(i, j, 0);
-                if (val > bestVal) bestVal = val;
-                if (bestVal > alpha) alpha = bestVal;
-                if (beta <= alpha) break;
+                undoMove(r, c);
+                if (val > best) best = val;
+                if (best > alpha) alpha = best;
+                if (beta <= alpha) return best;
             }
         }
-        return bestVal;
+        return best;
     } else {
-        int bestVal = INF;
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (board[i][j] != 0) continue;
-                setMove(i, j, oppId);
+        int best = INF;
+        for (int r = 0; r < 5; r++) {
+            for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
+                int move = (r+1)*10 + (c+1);
+                setMove(move, oppId);
                 int val = minimax(depth-1, alpha, beta, true);
-                setMove(i, j, 0);
-                if (val < bestVal) bestVal = val;
-                if (bestVal < beta) beta = bestVal;
-                if (beta <= alpha) break;
+                undoMove(r, c);
+                if (val < best) best = val;
+                if (best < beta) beta = best;
+                if (beta <= alpha) return best;
             }
         }
-        return bestVal;
+        return best;
     }
 }
 
 // -----------------------------------------------------------------------------
-// findBestMove zgodnie z regułami gry
+// findBestMove zgodnie z regułami gry i nową heurystyką
 // -----------------------------------------------------------------------------
 void findBestMove(int *outR, int *outC) {
     int bestVal = -INF, count = 0;
     int cand[25][2];
 
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            if (board[i][j] != 0) continue;
+    for (int r = 0; r < 5; r++) {
+        for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
+            int move = (r+1)*10 + (c+1);
 
-            setMove(i, j, playerId);
+            setMove(move, playerId);
 
-            // 1) natychmiast wygrana?
+            // 1) wygrana czwórką?
             if (hasFour(playerId)) {
-                *outR = i; *outC = j;
-                setMove(i, j, 0);
+                *outR = r; *outC = c;
+                undoMove(r, c);
                 return;
             }
-            // 2) tworzy przegrywającą trójkę?
+            // 2) przegrywająca trójka?
             if (hasOnlyThree(playerId)) {
-                setMove(i, j, 0);
+                undoMove(r, c);
                 continue;
             }
 
-            // 3) minimax
+            // 3) oceniaj minimax
             int val = minimax(searchDepth-1, -INF, INF, false);
-            setMove(i, j, 0);
+            undoMove(r, c);
 
             if (val > bestVal) {
                 bestVal = val;
                 count = 0;
-                cand[count][0] = i;
-                cand[count][1] = j;
+                cand[count][0] = r;
+                cand[count][1] = c;
                 count++;
             } else if (val == bestVal) {
-                cand[count][0] = i;
-                cand[count][1] = j;
+                cand[count][0] = r;
+                cand[count][1] = c;
                 count++;
             }
         }
@@ -234,6 +254,7 @@ void findBestMove(int *outR, int *outC) {
         *outC = -1;
     }
 }
+
 
 int main(int argc, char *argv[]) {
     if(argc < 6) {
