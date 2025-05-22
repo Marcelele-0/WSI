@@ -257,97 +257,92 @@ void findBestMove(int *outR, int *outC) {
 
 
 int main(int argc, char *argv[]) {
-    if(argc < 6) {
-        printf("Użycie: %s <IP> <port> <player(1/2)> <name> <depth>\n", argv[0]);
-        return 1;
-    }
-    // Parsowanie argumentów
-    char *ip = argv[1];
-    int port = atoi(argv[2]);
-    playerId = atoi(argv[3]);
-    strncpy(playerName, argv[4], 9);
-    searchDepth = atoi(argv[5]);
-    oppId = (playerId == 1 ? 2 : 1);
+    int server_socket;
+    struct sockaddr_in server_addr;
+    char server_message[16], player_message[16];
 
-    srand(time(NULL));
-    // Inicjalizacja połączenia TCP
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in serv_addr;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    inet_pton(AF_INET, ip, &serv_addr.sin_addr);
-    if(connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
-        perror("Błąd połączenia");
-        return 1;
-    }
-    // (Opcjonalnie można wysłać nazwę gracza, jeśli wymaga protokół)
+    bool end_game;
+    int player, msg, move;
 
-    // Jeżeli jesteśmy graczem 1, wykonujemy pierwszy ruch
-    if(playerId == 1) {
-        // Liczymy dotychczasowe ruchy (brak ruchów)
-        int row = 2, col = 2;
-        // Zasada książki otwarć: pierwszy ruch - środek
-        setMove(row, col, playerId);
-        char msg[32];
-        sprintf(msg, "MOVE %d %d\n", row, col);
-        send(sock, msg, strlen(msg), 0);
+    if (argc != 6) {
+        printf("Usage: %s <IP> <PORT> <PLAYER_ID> <NAME> <DEPTH>\n", argv[0]);
+        return -1;
     }
 
-    // Pętla gry: czytamy ruchy przeciwnika, wykonujemy swoje
-    while(true) {
-        char buffer[64];
-        memset(buffer, 0, sizeof(buffer));
-        int n = recv(sock, buffer, 63, 0);
-        if(n <= 0) break;  // brak danych lub rozłączenie
-        buffer[n] = '\0';
+    // Create socket
+  server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if ( server_socket < 0 ) {
+    printf("Unable to create socket\n");
+    return -1;
+  }
+  printf("Socket created successfully\n");
 
-        if(strncmp(buffer, "MOVE", 4) == 0) {
-            int r, c;
-            sscanf(buffer, "MOVE %d %d", &r, &c);
-            // Wprowadzamy ruch przeciwnika
-            setMove(r, c, oppId);
-            // Sprawdzamy książkę otwarć (gdy to nasz pierwszy ruch jako gracz 2)
-            int moveR = -1, moveC = -1;
-            int movesCount = 0;
-            for(int i = 0; i < 5; i++)
-                for(int j = 0; j < 5; j++)
-                    if(board[i][j] != 0) movesCount++;
-            // Jeśli przeciwnik wykonał pierwszy ruch i jesteśmy drugim graczem:
-            if(movesCount == 1 && playerId == 2) {
-                // Jeśli środek wolny, zajmujemy go, inaczej randomowy róg
-                if(board[2][2] == 0) {
-                    moveR = 2; moveC = 2;
-                } else {
-                    int corners[4][2] = {{0,0},{0,4},{4,0},{4,4}};
-                    int available[4], cnt = 0;
-                    for(int k = 0; k < 4; k++){
-                        int rr = corners[k][0], cc = corners[k][1];
-                        if(board[rr][cc] == 0) {
-                            available[cnt++] = k;
-                        }
-                    }
-                    if(cnt > 0) {
-                        int choice = rand() % cnt;
-                        moveR = corners[available[choice]][0];
-                        moveC = corners[available[choice]][1];
-                    }
-                }
-            }
-            // Jeśli nie zastosowaliśmy książki, używamy minimax
-            if(moveR == -1) {
-                findBestMove(&moveR, &moveC);
-            }
-            // Wykonujemy nasz ruch
-            if(moveR != -1) {
-                setMove(moveR, moveC, playerId);
-                char msg[32];
-                sprintf(msg, "MOVE %d %d\n", moveR, moveC);
-                send(sock, msg, strlen(msg), 0);
-            }
-        }
-        // (Można też obsłużyć komunikaty typu WIN/LOSE, ale zwykle serwer kończy po grze)
+  // Set port and IP the same as server-side
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(atoi(argv[2]));
+  server_addr.sin_addr.s_addr = inet_addr(argv[1]);
+
+  // Send connection request to server
+  if ( connect(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0 ) {
+    printf("Unable to connect\n");
+    return -1;
+  }
+  printf("Connected with server successfully\n");
+
+  // Receive the server message
+  memset(server_message, '\0', sizeof(server_message));
+  if ( recv(server_socket, server_message, sizeof(server_message), 0) < 0 ) {
+    printf("Error while receiving server's message\n");
+    return -1;
+  }
+
+  memset(player_message, '\0', sizeof(player_message));
+  snprintf(player_message, sizeof(player_message), "%s %s", argv[3], argv[4]);
+  // Send the message to server
+  if ( send(server_socket, player_message, strlen(player_message), 0) < 0 ) {
+    printf("Unable to send message\n");
+    return -1;
+  }
+
+  setBoard();
+  end_game = false;
+  sscanf(argv[3], "%d", &player);
+
+  while ( !end_game ) {
+    memset(server_message, '\0', sizeof(server_message));
+    if ( recv(server_socket, server_message, sizeof(server_message), 0) < 0 ) {
+      printf("Error while receiving server's message\n");
+      return -1;
     }
+    sscanf(server_message, "%d", &msg);
+    move = msg%100;
+    msg = msg/100;
+    if ( move != 0 ) {
+      setMove(move, 3-player);
+    }
+    if ( (msg == 0) || (msg == 6) ) {
+      move = bestMove();
+      setMove(move, player);
+      memset(player_message, '\0', sizeof(player_message));
+      snprintf(player_message, sizeof(player_message), "%d", move);
+      if ( send(server_socket, player_message, strlen(player_message), 0) < 0 ) {
+        printf("Unable to send message\n");
+        return -1;
+      }
+     } else {
+       end_game = true;
+       switch ( msg ) {
+         case 1 : printf("You won.\n"); break;
+         case 2 : printf("You lost.\n"); break;
+         case 3 : printf("Draw.\n"); break;
+         case 4 : printf("You won. Opponent error.\n"); break;
+         case 5 : printf("You lost. Your error.\n"); break;
+      }
+    }
+  }
 
-    close(sock);
-    return 0;
+  // Close socket
+  close(server_socket);
+
+  return 0;
 }
