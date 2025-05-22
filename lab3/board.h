@@ -5,6 +5,7 @@ Plansza ver. 0.2
 ****************************/
 #pragma once
 #include <stdio.h>
+#include <stdbool.h>
 
 int board[5][5];
 

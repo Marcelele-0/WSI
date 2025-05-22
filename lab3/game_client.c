@@ -6,8 +6,10 @@ Client ver. 0.2
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+
 
 #include "./board.h"
 
