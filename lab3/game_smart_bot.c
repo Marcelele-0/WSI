@@ -5,109 +5,46 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
-
-#include "board.h" 
-
-#define INF 1000000
+#include "board.h"  // Include the board.h header file for board-related functions
 
 int player, opponent, searchDepth = 3;
 
 int evaluateBoard() {
-    int score = 0;
-    int dr[4] = {0, 1, 1, 1};
-    int dc[4] = {1, 0, 1, -1};
-
-    for (int r = 0; r < 5; r++) {
-        for (int c = 0; c < 5; c++) {
-            for (int d = 0; d < 4; d++) {
-                int endR = r + dr[d] * 3;
-                int endC = c + dc[d] * 3;
-                if (endR < 0 || endR > 4 || endC < 0 || endC > 4) continue;
-
-                int countMy = 0, countOpp = 0;
-                for (int i = 0; i < 4; i++) {
-                    int nr = r + dr[d] * i;
-                    int nc = c + dc[d] * i;
-                    if (board[nr][nc] == player) countMy++;
-                    else if (board[nr][nc] == opponent) countOpp++;
-                }
-
-                if (countOpp == 0) score += 50 * countMy;
-                else if (countMy == 0) score -= 50 * countOpp;
-            }
-        }
-    }
-
-    return score;
+  // Basic stub: always return 0
+  return 0;
 }
 
 int minimax(int depth, int alpha, int beta, bool maximizing) {
-    if (winCheck(player)) return INF;
-    if (winCheck(opponent)) return -INF;
-    if (loseCheck(player)) return -INF;
-    if (loseCheck(opponent)) return INF;
-    if (depth == 0) return evaluateBoard();
-
-    if (maximizing) {
-        int maxEval = -INF;
-        for (int i = 0; i < 5; i++) for (int j = 0; j < 5; j++) {
-            if (board[i][j] == 0) {
-                board[i][j] = player;
-                int eval = minimax(depth - 1, alpha, beta, false);
-                board[i][j] = 0;
-                if (eval > maxEval) maxEval = eval;
-                if (maxEval > alpha) alpha = maxEval;
-                if (beta <= alpha) break;
-            }
-        }
-        return maxEval;
-    } else {
-        int minEval = INF;
-        for (int i = 0; i < 5; i++) for (int j = 0; j < 5; j++) {
-            if (board[i][j] == 0) {
-                board[i][j] = opponent;
-                int eval = minimax(depth - 1, alpha, beta, true);
-                board[i][j] = 0;
-                if (eval < minEval) minEval = eval;
-                if (minEval < beta) beta = minEval;
-                if (beta <= alpha) break;
-            }
-        }
-        return minEval;
-    }
+  // Basic stub: always return 0
+  return 0;
 }
 
 int bestMove() {
-    int bestScore = -INF;
-    int move = 0;
-    for (int i = 0; i < 5; i++) for (int j = 0; j < 5; j++) {
-        if (board[i][j] == 0) {
-            board[i][j] = player;
-            int score = minimax(searchDepth - 1, -INF, INF, false);
-            board[i][j] = 0;
-            if (score > bestScore) {
-                bestScore = score;
-                move = (i + 1) * 10 + (j + 1);
-            }
-        }
-    }
-    return move;
+  // Basic stub: always return the first available move
+  for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+          if (board[i][j] == 0) {
+              return (i + 1) * 10 + (j + 1);
+          }
+      }
+  }
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
-    int server_socket;
-    struct sockaddr_in server_addr;
-    char server_message[16], player_message[16];
+  int server_socket;
+  struct sockaddr_in server_addr;
+  char server_message[16], player_message[16];
 
-    bool end_game;
-    int player, msg, move;
+  bool end_game;
+  int player, msg, move;
 
-    if (argc != 6) {
-        printf("Usage: %s <IP> <PORT> <PLAYER_ID> <NAME> <DEPTH>\n", argv[0]);
-        return -1;
-    }
+  if (argc != 6) {
+    printf("Usage: %s <IP> <PORT> <PLAYER_ID> <NAME> <DEPTH>\n", argv[0]);
+    return -1;
+  }
 
-    // Create socket
+  // Create socket
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if ( server_socket < 0 ) {
     printf("Unable to create socket\n");
@@ -133,11 +70,10 @@ int main(int argc, char *argv[]) {
     printf("Error while receiving server's message\n");
     return -1;
   }
-
   memset(player_message, '\0', sizeof(player_message));
   snprintf(player_message, sizeof(player_message), "%s %s", argv[3], argv[4]);
   // Send the message to server
-  if ( send(server_socket, player_message, strlen(player_message), 0) < 0 ) {
+  if (send(server_socket, player_message, strlen(player_message), 0) < 0) {
     printf("Unable to send message\n");
     return -1;
   }
@@ -146,35 +82,35 @@ int main(int argc, char *argv[]) {
   end_game = false;
   sscanf(argv[3], "%d", &player);
 
-  while ( !end_game ) {
+  while (!end_game) {
     memset(server_message, '\0', sizeof(server_message));
-    if ( recv(server_socket, server_message, sizeof(server_message), 0) < 0 ) {
+    if (recv(server_socket, server_message, sizeof(server_message), 0) < 0) {
       printf("Error while receiving server's message\n");
       return -1;
     }
     sscanf(server_message, "%d", &msg);
-    move = msg%100;
-    msg = msg/100;
-    if ( move != 0 ) {
-      setMove(move, 3-player);
+    move = msg % 100;
+    msg = msg / 100;
+    if (move != 0) {
+      setMove(move, 3 - player);
     }
-    if ( (msg == 0) || (msg == 6) ) {
+    if ((msg == 0) || (msg == 6)) {
       move = bestMove();
       setMove(move, player);
       memset(player_message, '\0', sizeof(player_message));
       snprintf(player_message, sizeof(player_message), "%d", move);
-      if ( send(server_socket, player_message, strlen(player_message), 0) < 0 ) {
+      if (send(server_socket, player_message, strlen(player_message), 0) < 0) {
         printf("Unable to send message\n");
         return -1;
       }
-     } else {
-       end_game = true;
-       switch ( msg ) {
-         case 1 : printf("You won.\n"); break;
-         case 2 : printf("You lost.\n"); break;
-         case 3 : printf("Draw.\n"); break;
-         case 4 : printf("You won. Opponent error.\n"); break;
-         case 5 : printf("You lost. Your error.\n"); break;
+    } else {
+      end_game = true;
+      switch (msg) {
+        case 1: printf("You won.\n"); break;
+        case 2: printf("You lost.\n"); break;
+        case 3: printf("Draw.\n"); break;
+        case 4: printf("You won. Opponent error.\n"); break;
+        case 5: printf("You lost. Your error.\n"); break;
       }
     }
   }
