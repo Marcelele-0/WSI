@@ -145,6 +145,14 @@ int evaluateBoard() {
     return score;
 }
 
+bool isBoardFull() {
+    for (int r = 0; r < 5; r++)
+        for (int c = 0; c < 5; c++)
+            if (board[r][c] == 0) return false;
+    return true;
+}
+
+
 // -----------------------------------------------------------------------------
 // Minimax z alfa-beta i terminalami na 4/3.
 // -----------------------------------------------------------------------------
@@ -154,7 +162,7 @@ int minimax(int depth, int alpha, int beta, bool isMaximizing) {
     if (hasFour(oppId))         return -INF;
     if (hasOnlyThree(oppId))    return +INF;
 
-    if (depth == 0) {
+    if (depth == 0 || isBoardFull()) {
         return evaluateBoard();
     }
 
