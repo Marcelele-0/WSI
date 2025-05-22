@@ -5,37 +5,24 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "board.h"  
+#include "board.h"   // board.h contains the definition of the board and the setMove function
 
 #define INF 1000000
 
-extern int  board[5][5];   // 0 = puste, 1/2 = gracze
-extern int  playerId, oppId;
-extern int  searchDepth;
+int playerId, oppId;
+int searchDepth; // Głębokość przeszukiwania minimax
 
 /**
- * Ustawia ruch zakodowany jako dwucyfrowa liczba:
- * dziesiątki = wiersz+1 (1–5), jedności = kolumna+1 (1–5).
- * Zwraca false, jeśli poza planszą lub pole zajęte.
+ * Cofnięcie ruchu na kodowanym polu.
  */
-bool setMove(int move, int player) {
+static void undoMove(int move) {
     int i = (move / 10) - 1;
     int j = (move % 10) - 1;
-    if (i < 0 || i > 4 || j < 0 || j > 4) return false;
-    if (board[i][j] != 0)                return false;
-    board[i][j] = player;
-    return true;
-}
-
-/**
- * Zdejmuje pionek z planszy, używane do cofania ruchu.
- */
-static void undoMove(int r, int c) {
-    board[r][c] = 0;
+    board[i][j] = 0;
 }
 
 // -----------------------------------------------------------------------------
-// Zlicza w 4-pólkowym segmencie, ile Twoich i ile przeciwnika.
+// Policzy w segmencie 4 pól ile jest pid i ile przeciwnika.
 // -----------------------------------------------------------------------------
 static void lineCount(int pid, int *outMy, int *outOpp,
                       int sr, int sc, int dr, int dc)
@@ -51,7 +38,7 @@ static void lineCount(int pid, int *outMy, int *outOpp,
 }
 
 // -----------------------------------------------------------------------------
-// Czy gdziekolwiek jest 4 w linii (czysta czwórka) dla pid?
+// Czy jest gdziekolwiek „czysta” czwórka pid?
 // -----------------------------------------------------------------------------
 static bool hasFour(int pid)
 {
@@ -71,7 +58,7 @@ static bool hasFour(int pid)
 }
 
 // -----------------------------------------------------------------------------
-// Czy gdziekolwiek jest dokładnie 3 w linii (czysta trójka) dla pid?
+// Czy jest „czysta” trójka pid?
 // -----------------------------------------------------------------------------
 static bool hasOnlyThree(int pid)
 {
@@ -91,7 +78,7 @@ static bool hasOnlyThree(int pid)
 }
 
 // -----------------------------------------------------------------------------
-// Heurystyka: premie/kar za 1–4 w linii, otwarte trójki, widełki…
+// Heurystyka oceny pozycji z otwartymi trójkami i widełkami.
 // -----------------------------------------------------------------------------
 int evaluateBoard() {
     int score = 0;
@@ -111,11 +98,11 @@ int evaluateBoard() {
                     else if (board[nr][nc] == oppId)    countOpp++;
                 }
 
-                // Analiza moich segmentów
+                // Moje linie
                 if (countOpp == 0) {
                     if      (countMy == 4) score += 100000;
                     else if (countMy == 3) {
-                        // Czy są 3 obok siebie?
+                        // sprawdź, czy są trzy obok siebie
                         bool consec = false;
                         for (int k = 0; k < 2; k++) {
                             int r1=r+dr[d]*k,    c1=c+dc[d]*k;
@@ -139,7 +126,7 @@ int evaluateBoard() {
                     else if (countMy == 1) score += 10;
                 }
 
-                // Analiza segmentów przeciwnika
+                // Linie przeciwnika
                 if (countMy == 0) {
                     if      (countOpp == 4) score -= 100000;
                     else if (countOpp == 3) score += 10000;
@@ -150,7 +137,7 @@ int evaluateBoard() {
         }
     }
 
-    // Widełki: dwa lub więcej otwartych trójek
+    // Bonus za widełki (>=2 otwarte trójki)
     if (openThrees >= 2) {
         score += 20000;
     }
@@ -159,7 +146,7 @@ int evaluateBoard() {
 }
 
 // -----------------------------------------------------------------------------
-// Minimax z alfa-beta i terminalami na 4/3
+// Minimax z alfa-beta i terminalami na 4/3.
 // -----------------------------------------------------------------------------
 int minimax(int depth, int alpha, int beta, bool isMaximizing) {
     if (hasFour(playerId))      return +INF;
@@ -175,11 +162,11 @@ int minimax(int depth, int alpha, int beta, bool isMaximizing) {
         int best = -INF;
         for (int r = 0; r < 5; r++) {
             for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
-                int move = (r+1)*10 + (c+1);
-                setMove(move, playerId);
+                int mv = (r+1)*10 + (c+1);
+                setMove(mv, playerId);
                 int val = minimax(depth-1, alpha, beta, false);
-                undoMove(r, c);
-                if (val > best) best = val;
+                undoMove(mv);
+                if (val > best)  best = val;
                 if (best > alpha) alpha = best;
                 if (beta <= alpha) return best;
             }
@@ -189,11 +176,11 @@ int minimax(int depth, int alpha, int beta, bool isMaximizing) {
         int best = INF;
         for (int r = 0; r < 5; r++) {
             for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
-                int move = (r+1)*10 + (c+1);
-                setMove(move, oppId);
+                int mv = (r+1)*10 + (c+1);
+                setMove(mv, oppId);
                 int val = minimax(depth-1, alpha, beta, true);
-                undoMove(r, c);
-                if (val < best) best = val;
+                undoMove(mv);
+                if (val < best)  best = val;
                 if (best < beta) beta = best;
                 if (beta <= alpha) return best;
             }
@@ -203,56 +190,48 @@ int minimax(int depth, int alpha, int beta, bool isMaximizing) {
 }
 
 // -----------------------------------------------------------------------------
-// findBestMove zgodnie z regułami gry i nową heurystyką
+// findBestMove: zwraca kod ruchu (r+1)*10+(c+1) według reguł gry.
 // -----------------------------------------------------------------------------
-void findBestMove(int *outR, int *outC) {
-    int bestVal = -INF, count = 0;
-    int cand[25][2];
+int findBestMove() {
+    int bestVal = -INF;
+    int count   = 0;
+    int cand[25];
 
     for (int r = 0; r < 5; r++) {
         for (int c = 0; c < 5; c++) if (board[r][c] == 0) {
-            int move = (r+1)*10 + (c+1);
+            int mv = (r+1)*10 + (c+1);
+            setMove(mv, playerId);
 
-            setMove(move, playerId);
-
-            // 1) wygrana czwórką?
+            // 1) natychmiastowa wygrana?
             if (hasFour(playerId)) {
-                *outR = r; *outC = c;
-                undoMove(r, c);
-                return;
+                undoMove(mv);
+                return mv;
             }
-            // 2) przegrywająca trójka?
+            // 2) tworzy przegrywającą trójkę?
             if (hasOnlyThree(playerId)) {
-                undoMove(r, c);
+                undoMove(mv);
                 continue;
             }
 
-            // 3) oceniaj minimax
+            // 3) ocena minimax
             int val = minimax(searchDepth-1, -INF, INF, false);
-            undoMove(r, c);
+            undoMove(mv);
 
             if (val > bestVal) {
                 bestVal = val;
-                count = 0;
-                cand[count][0] = r;
-                cand[count][1] = c;
-                count++;
+                count   = 0;
+                cand[count++] = mv;
             } else if (val == bestVal) {
-                cand[count][0] = r;
-                cand[count][1] = c;
-                count++;
+                cand[count++] = mv;
             }
         }
     }
 
     if (count > 0) {
-        int idx = rand() % count;
-        *outR = cand[idx][0];
-        *outC = cand[idx][1];
-    } else {
-        *outR = -1;
-        *outC = -1;
+        return cand[rand() % count];
     }
+    // brak ruchów
+    return 0;
 }
 
 
@@ -269,7 +248,18 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // Create socket
+    sscanf(argv[5], "%d", &searchDepth);
+    sscanf(argv[3], "%d", &player);
+
+    if (player == 1) {
+        playerId = 1;
+        oppId = 2;
+    } else {
+        playerId = 2;
+        oppId = 1;
+    }
+
+   // Create socket
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if ( server_socket < 0 ) {
     printf("Unable to create socket\n");
@@ -321,7 +311,7 @@ int main(int argc, char *argv[]) {
       setMove(move, 3-player);
     }
     if ( (msg == 0) || (msg == 6) ) {
-      move = bestMove();
+      move = findBestMove();
       setMove(move, player);
       memset(player_message, '\0', sizeof(player_message));
       snprintf(player_message, sizeof(player_message), "%d", move);
