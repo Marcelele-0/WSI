@@ -1,3 +1,35 @@
+#define BOARD_SIZE 5
+
+// Pomocnicza funkcja: sprawdza czy po ruchu (row, col) powstała przegrywająca trójka (bez czwórki)
+bool isLosingThree(int row, int col, int player) {
+    int dr[4] = {0, 1, 1, 1};
+    int dc[4] = {1, 0, 1, -1};
+    for (int d = 0; d < 4; d++) {
+        int count = 0;
+        for (int i = -2; i <= 1; i++) { // sprawdzamy 4-kę z przesunięciem
+            int inRow = 0;
+            for (int j = 0; j < 3; j++) {
+                int nr = row + dr[d] * (i + j);
+                int nc = col + dc[d] * (i + j);
+                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] == player) {
+                    inRow++;
+                }
+            }
+            if (inRow == 3) {
+                // Sprawdź czy nie ma czwórki w tej samej linii
+                int beforeR = row + dr[d] * (i - 1);
+                int beforeC = col + dc[d] * (i - 1);
+                int afterR = row + dr[d] * (i + 3);
+                int afterC = col + dc[d] * (i + 3);
+                bool beforeOk = (beforeR < 0 || beforeR >= BOARD_SIZE || beforeC < 0 || beforeC >= BOARD_SIZE || board[beforeR][beforeC] != player);
+                bool afterOk = (afterR < 0 || afterR >= BOARD_SIZE || afterC < 0 || afterC >= BOARD_SIZE || board[afterR][afterC] != player);
+                // Jeśli nie ma czwórki, to przegrywająca trójka
+                if (beforeOk && afterOk) return true;
+            }
+        }
+    }
+    return false;
+}
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,9 +44,15 @@ int player, opponent, searchDepth;
 int evaluateBoard() {
   // Zaawansowana ocena planszy
   if (winCheck(player)) return 1000;
-  if (loseCheck(player)) return -1000;
   if (winCheck(3 - player)) return -1000;
-  if (loseCheck(3 - player)) return 1000;
+
+  // Sprawdź przegrywającą trójkę dla obu graczy (ale tylko jeśli nie ma czwórki)
+  for (int i = 0; i < BOARD_SIZE; i++) {
+    for (int j = 0; j < BOARD_SIZE; j++) {
+      if (board[i][j] == player && isLosingThree(i, j, player)) return -1000;
+      if (board[i][j] == 3 - player && isLosingThree(i, j, 3 - player)) return 1000;
+    }
+  }
 
   int score = 0;
   // Zlicz trójki i dwójki dla obu graczy
@@ -81,11 +119,10 @@ int minimax(int depth, int alpha, int beta, bool maximizing) {
 }
 
 int bestMove() {
-  // Mega podstawowa wersja: wybierz ruch z najlepszym wynikiem minimax
   int bestScore = -10000;
   int move = 0;
-  for (int i = 0; i < 5; i++) {
-    for (int j = 0; j < 5; j++) {
+  for (int i = 0; i < BOARD_SIZE; i++) {
+    for (int j = 0; j < BOARD_SIZE; j++) {
       if (board[i][j] == 0) {
         board[i][j] = player;
         int score = minimax(searchDepth - 1, -10000, 10000, false);
