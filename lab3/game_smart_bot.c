@@ -10,9 +10,40 @@
 int player, opponent, searchDepth;
 
 int evaluateBoard() {
+  // Zaawansowana ocena planszy
   if (winCheck(player)) return 1000;
+  if (loseCheck(player)) return -1000;
   if (winCheck(3 - player)) return -1000;
-  return 0;
+  if (loseCheck(3 - player)) return 1000;
+
+  int score = 0;
+  // Zlicz trójki i dwójki dla obu graczy
+  int dr[4] = {0, 1, 1, 1};
+  int dc[4] = {1, 0, 1, -1};
+  for (int r = 0; r < 5; r++) {
+    for (int c = 0; c < 5; c++) {
+      for (int d = 0; d < 4; d++) {
+        int count_player = 0, count_opp = 0, empty = 0;
+        int endR = r + dr[d] * 3;
+        int endC = c + dc[d] * 3;
+        if (endR < 0 || endR > 4 || endC < 0 || endC > 4) continue;
+        for (int i = 0; i < 4; i++) {
+          int nr = r + dr[d] * i;
+          int nc = c + dc[d] * i;
+          if (board[nr][nc] == player) count_player++;
+          else if (board[nr][nc] == 3 - player) count_opp++;
+          else empty++;
+        }
+        // Trójki
+        if (count_player == 3 && count_opp == 0 && empty == 1) score += 100;
+        if (count_opp == 3 && count_player == 0 && empty == 1) score -= 100;
+        // Dwójki
+        if (count_player == 2 && count_opp == 0 && empty == 2) score += 10;
+        if (count_opp == 2 && count_player == 0 && empty == 2) score -= 10;
+      }
+    }
+  }
+  return score;
 }
 
 int minimax(int depth, int alpha, int beta, bool maximizing) {
