@@ -96,10 +96,12 @@ int main(int argc, char *argv[]) {
     move = msg%100;
     msg = msg/100;
     if ( move != 0 ) {
+      printf("[RANDOM BOT] setMove called with move=%d, player=%d (opponent move)\n", move, 3-player);
       setMove(move, 3-player);
     }
     if ( (msg == 0) || (msg == 6) ) {
       move = randomMove(player, generator);
+      printf("[RANDOM BOT] setMove called with move=%d, player=%d (my move)\n", move, player);
       setMove(move, player);
       memset(player_message, '\0', sizeof(player_message));
       snprintf(player_message, sizeof(player_message), "%d", move);
