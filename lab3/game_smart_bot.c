@@ -1,31 +1,5 @@
 #include "board.h"
-
-// Sprawdza czy obecny stan planszy zawiera "otwartą trójkę" gracza who
-bool creates_open_three(int who) {
-    for (int l = 0; l < 48; l++) {
-        int count = 0;
-        for (int m = 0; m < 3; m++) {
-            int x = lose[l][m][0];
-            int y = lose[l][m][1];
-            if (board[x][y] == who) count++;
-        }
-        if (count == 3) {
-            // Wyznacz kierunek linii
-            int x1 = lose[l][0][0], y1 = lose[l][0][1];
-            int x2 = lose[l][1][0], y2 = lose[l][1][1];
-            int x3 = lose[l][2][0], y3 = lose[l][2][1];
-            int dx = x2 - x1, dy = y2 - y1;
-            // Sprawdź pole przed pierwszym i za ostatnim
-            int before_x = x1 - dx, before_y = y1 - dy;
-            int after_x = x3 + dx, after_y = y3 + dy;
-            if (before_x >= 0 && before_x < 5 && before_y >= 0 && before_y < 5 && board[before_x][before_y] == 0 &&
-                after_x >= 0 && after_x < 5 && after_y >= 0 && after_y < 5 && board[after_x][after_y] == 0) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
+#include "heuristic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,80 +7,8 @@ bool creates_open_three(int who) {
 #include <time.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
-#include "board.h"  // Include the board.h header file for board-related functions
 
 int player, opponent, searchDepth;
-
-// Nowa heurystyka: faworyzuje linie z wieloma swoimi pionkami i blokuje linie przeciwnika
-#include "board.h"
-int evaluateBoard(int who) {
-    int score = 0;
-    for (int w = 0; w < 28; w++) { // 28 możliwych czwórek
-        int my_count = 0, opp_count = 0;
-        for (int k = 0; k < 4; k++) {
-            int i = win[w][k][0];
-            int j = win[w][k][1];
-            if (board[i][j] == who) my_count++;
-            else if (board[i][j] == 3 - who) opp_count++;
-        }
-        if (my_count > 0 && opp_count == 0) {
-            if (my_count == 1) score += 1;
-            else if (my_count == 2) score += 2;
-            else if (my_count == 3) score += 4;
-            else if (my_count == 4) score += 1000; // wygrana
-        }
-        if (opp_count > 0 && my_count == 0) {
-            if (opp_count == 1) score -= 1;
-            else if (opp_count == 2) score -= 2;
-            else if (opp_count == 3) score -= 4;
-            else if (opp_count == 4) score -= 1000; // przegrana
-        }
-    }
-    return score;
-}
-
-int minimax(int depth, int alpha, int beta, int currentPlayer, bool maximizing) {
-    if (depth == 0) {
-        int eval = evaluateBoard(player);
-        return eval;
-    }
-    int best;
-    if (maximizing) {
-        best = -100000;
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (board[i][j] == 0) {
-                    board[i][j] = currentPlayer;
-                    int val = minimax(depth - 1, alpha, beta, 3 - currentPlayer, false);
-                    board[i][j] = 0;
-                    if (val > best) best = val;
-                    if (best > alpha) alpha = best;
-                    if (beta <= alpha) {
-                        return best;
-                    }
-                }
-            }
-        }
-        return best;
-    } else {
-        best = 100000;
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (board[i][j] == 0) {
-                    board[i][j] = currentPlayer;
-                    int val = minimax(depth - 1, alpha, beta, 3 - currentPlayer, true);
-                    board[i][j] = 0;
-                    if (val < best) best = val;
-                    if (best < beta) beta = best;
-                    if (beta <= alpha) {
-                        return best;
-                    }
-                }
-            }
-        }
-        return best;
-    }
-}
 
 // Funkcja bestMove: wybiera najlepszy ruch na podstawie heurystyki i minimax
 int bestMove() {
@@ -133,19 +35,13 @@ int bestMove() {
                     return move;
                 }
                 board[i][j] = player;
-                // Odrzuć ruch, jeśli tworzy otwartą trójkę
-                if (creates_open_three(player)) {
-                    board[i][j] = 0;
-                    if (safeMove == 0) safeMove = (i + 1) * 10 + (j + 1);
-                    continue;
-                }
                 // Odrzuć ruch, jeśli natychmiast przegrywasz
                 if (loseCheck(player)) {
                     board[i][j] = 0;
                     if (safeMove == 0) safeMove = (i + 1) * 10 + (j + 1);
                     continue;
                 }
-                int score = minimax(searchDepth - 1, -100000, 100000, 3 - player, false);
+                int score = minimax(searchDepth - 1, -100000, 100000, 3 - player, false, player);
                 board[i][j] = 0;
                 if (score > bestScore) {
                     bestScore = score;
