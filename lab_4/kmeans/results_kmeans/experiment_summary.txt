@@ -1,0 +1,29 @@
+MNIST K-Means Clustering - Podsumowanie Eksperymentów
+============================================================
+
+INERCJE (najlepsze z 5 prób):
+------------------------------
+k=10:  2758382
+k=15:  2580191
+k=20:  2469547
+k=30:  2313919
+
+ŚREDNIA CZYSTOŚĆ KLASTRÓW:
+------------------------------
+k=10:  68.3%
+k=15:  71.2%
+k=20:  74.9%
+k=30:  77.9%
+
+PLIKI WYGENEROWANE:
+------------------------------
+- cluster_composition_k10.png
+- centroids_k10.png
+- cluster_composition_k15.png
+- centroids_k15.png
+- cluster_composition_k20.png
+- centroids_k20.png
+- cluster_composition_k30.png
+- centroids_k30.png
+- inertia_comparison.png
+- purity_comparison.png
