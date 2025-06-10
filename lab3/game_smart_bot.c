@@ -35,12 +35,13 @@ int bestMove() {
                     return move;
                 }
                 board[i][j] = player;
-                // Odrzuć ruch, jeśli natychmiast przegrywasz
+                // Odrzuć ruch, jeśli natychmiast przegrywasz (3 w rzędzie)
                 if (loseCheck(player)) {
                     board[i][j] = 0;
-                    if (safeMove == 0) safeMove = (i + 1) * 10 + (j + 1);
-                    continue;
+                    continue; // Całkowicie odrzuć ten ruch - nie jest bezpieczny
                 }
+                // Ten ruch jest bezpieczny (nie powoduje natychmiastowej przegranej)
+                if (safeMove == 0) safeMove = (i + 1) * 10 + (j + 1);
                 int score = minimax(searchDepth - 1, -100000, 100000, 3 - player, false, player);
                 board[i][j] = 0;
                 if (score > bestScore) {
