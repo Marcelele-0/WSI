@@ -665,6 +665,34 @@ void exploreRecursive(int localBoard[5][5], const char* currentSequence, int cur
                      int depth, int maxDepth, int searchDepth) {
     if (depth > maxDepth) return;
     
+    // Progress tracking - pokaż aktualną analizę
+    static int depth1_completed = 0;
+    static int depth2_completed = 0;
+    
+    if (depth == 1) {
+#ifdef _OPENMP
+        #pragma omp atomic
+#endif
+        depth1_completed++;
+        
+        if (depth1_completed % 10 == 0) {
+            printf("[PROGRESS DEEP] Level 1: Completed %d positions, analyzing: %s\n", 
+                   depth1_completed, currentSequence);
+        }
+    }
+    
+    if (depth == 2) {
+#ifdef _OPENMP
+        #pragma omp atomic
+#endif
+        depth2_completed++;
+        
+        if (depth2_completed % 50 == 0) {
+            printf("[PROGRESS DEEP] Level 2: Completed %d positions, current: %s\n", 
+                   depth2_completed, currentSequence);
+        }
+    }
+    
     // Znajdź najlepszy ruch dla aktualnego gracza
     int bestMove = 0;
     int bestScore = -100000;
@@ -726,14 +754,22 @@ void exploreRecursive(int localBoard[5][5], const char* currentSequence, int cur
                 int score;
             } MoveScore;
             
-            MoveScore topMoves[10];
+            MoveScore topMoves[5];
             int topCount = 0;
+            int candidatesEvaluated = 0;
             
             // Oceń wszystkie możliwe odpowiedzi
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 5; j++) {
                     if (localBoard[i][j] == 0) {
                         int responseMove = (i + 1) * 10 + (j + 1);
+                        candidatesEvaluated++;
+                        
+                        // Progress dla preselekcji (która jest najwolniejsza)
+                        if (depth <= 2) {
+                            printf("[MINIMAX EVAL] Depth %d: Evaluating candidate move %d (%d) for sequence: %s\n", 
+                                   depth, candidatesEvaluated, responseMove, currentSequence);
+                        }
                         
                         // Wykonaj ruch przeciwnika
                         localBoard[i][j] = 3 - currentPlayer;
@@ -810,7 +846,7 @@ void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth) {
     memcpy(localBoard, board, sizeof(board));
     localBoard[row][col] = 1;  // Pierwszy ruch
     
-    char firstSequence[10];
+    char firstSequence[5];
     sprintf(firstSequence, "%d", firstMove);
     
     // Analizuj wszystkie możliwe odpowiedzi przeciwnika (gracz 2)
