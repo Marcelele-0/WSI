@@ -1,5 +1,24 @@
 # Smart Bot - Inteligentny Bot do Gry w Kółko i Krzyżyk
 
+## TL;DR - Szybki Start
+
+### Kompilacja
+```bash
+make game_smart_bot
+```
+
+### Uruchomienie gry
+```bash
+./game_smart_bot <IP_SERWERA> <PORT> <ID_GRACZA> <N> <GŁĘBOKOŚĆ>
+```
+
+**Przykład:**
+```bash
+./game_smart_bot 127.0.0.1 8080 1 smartBotMM 8
+```
+
+---
+
 ## Autor
 **[Marcel Musialek]**  
 **[279704]**  
