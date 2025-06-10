@@ -11,6 +11,7 @@ make game_smart_bot
 ```bash
 ./game_smart_bot <IP_SERWERA> <PORT> <ID_GRACZA> <N> <GŁĘBOKOŚĆ>
 ```
+#### Zalecam 8 - 10 
 
 **Przykład:**
 ```bash
