@@ -15,6 +15,74 @@ int bookCapacity = 0;
 int moveHistory[25];
 int historyLength = 0;
 
+// Hash table dla szybkiego wyszukiwania
+HashNode* hashTable[HASH_TABLE_SIZE];
+
+// === FUNKCJE HASH TABLE ===
+
+// Funkcja hash - djb2 algorithm
+unsigned int hash(const char* str) {
+    unsigned int hash = 5381;
+    int c;
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    return hash % HASH_TABLE_SIZE;
+}
+
+// Inicjalizacja hash table
+void initHashTable(void) {
+    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        hashTable[i] = NULL;
+    }
+}
+
+// Dodaj wpis do hash table
+void addToHashTable(const char* sequence, int move, int score, int depth) {
+    unsigned int index = hash(sequence);
+    
+    HashNode* newNode = malloc(sizeof(HashNode));
+    if (!newNode) {
+        printf("Error: Cannot allocate memory for hash node!\n");
+        return;
+    }
+    
+    strcpy(newNode->sequence, sequence);
+    newNode->best_move = move;
+    newNode->score = score;
+    newNode->depth_analyzed = depth;
+    newNode->next = hashTable[index];  // Dodaj na początku łańcucha
+    hashTable[index] = newNode;
+}
+
+// Znajdź wpis w hash table
+HashNode* findInHashTable(const char* sequence) {
+    unsigned int index = hash(sequence);
+    HashNode* current = hashTable[index];
+    
+    while (current) {
+        if (strcmp(current->sequence, sequence) == 0) {
+            return current;
+        }
+        current = current->next;
+    }
+    
+    return NULL;  // Nie znaleziono
+}
+
+// Zwolnij pamięć hash table
+void freeHashTable(void) {
+    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        HashNode* current = hashTable[i];
+        while (current) {
+            HashNode* temp = current;
+            current = current->next;
+            free(temp);
+        }
+        hashTable[i] = NULL;
+    }
+}
+
 // === ZARZĄDZANIE HISTORIĄ RUCHÓW ===
 
 void clearMoveHistory(void) {
@@ -86,24 +154,41 @@ void initOpeningBook(void) {
         openingBook = malloc(bookCapacity * sizeof(OpeningEntry));
         bookSize = 0;
     }
+    initHashTable();  // Inicjalizuj hash table
 }
 
 void addOpeningEntry(const char* sequence, int move, int score, int depth) {
     initOpeningBook();
     
-    // Sprawdź czy wpis już istnieje - jeśli tak, aktualizuj jeśli lepsza analiza
+    // Konwertuj do kanonicznej formy (uwzględniając symetrie)
+    char canonicalSeq[MAX_SEQUENCE_LENGTH];
+    int transform;
+    getCanonicalSequence(sequence, canonicalSeq, &transform);
+    
+    // Transformuj też ruch do odpowiedniej formy kanonicznej
+    int canonicalMove = transformMove(move, transform);
+    
+    // Sprawdź czy wpis już istnieje w formie kanonicznej
     for (int i = 0; i < bookSize; i++) {
-        if (strcmp(openingBook[i].sequence, sequence) == 0) {
+        if (strcmp(openingBook[i].sequence, canonicalSeq) == 0) {
             if (depth > openingBook[i].depth_analyzed) {
-                openingBook[i].best_move = move;
+                openingBook[i].best_move = canonicalMove;
                 openingBook[i].score = score;
                 openingBook[i].depth_analyzed = depth;
+                
+                // Aktualizuj też hash table
+                HashNode* node = findInHashTable(canonicalSeq);
+                if (node) {
+                    node->best_move = canonicalMove;
+                    node->score = score;
+                    node->depth_analyzed = depth;
+                }
             }
             return;
         }
     }
     
-    // Dodaj nowy wpis
+    // Dodaj nowy wpis w formie kanonicznej
     if (bookSize >= bookCapacity) {
         bookCapacity *= 2;
         openingBook = realloc(openingBook, bookCapacity * sizeof(OpeningEntry));
@@ -113,11 +198,14 @@ void addOpeningEntry(const char* sequence, int move, int score, int depth) {
         }
     }
     
-    strcpy(openingBook[bookSize].sequence, sequence);
-    openingBook[bookSize].best_move = move;
+    strcpy(openingBook[bookSize].sequence, canonicalSeq);
+    openingBook[bookSize].best_move = canonicalMove;
     openingBook[bookSize].score = score;
     openingBook[bookSize].depth_analyzed = depth;
     bookSize++;
+    
+    // Dodaj też do hash table dla szybkiego wyszukiwania
+    addToHashTable(canonicalSeq, canonicalMove, score, depth);
 }
 
 void freeOpeningBook(void) {
@@ -127,6 +215,7 @@ void freeOpeningBook(void) {
         bookSize = 0;
         bookCapacity = 0;
     }
+    freeHashTable();  // Zwolnij hash table
 }
 
 // === UŻYCIE KSIĄŻKI W GRZE ===
@@ -145,13 +234,41 @@ int getOpeningMove(const char* moveSequence, int moveCount) {
         return 0; // Brak książki
     }
     
-    // Znajdź sekwencję w książce
-    for (int i = 0; i < bookSize; i++) {
-        if (strcmp(openingBook[i].sequence, moveSequence) == 0) {
-            printf("[OPENING] Using book move %d for sequence: %s\n", 
-                   openingBook[i].best_move, moveSequence);
-            return openingBook[i].best_move;
+    // Konwertuj sekwencję do formy kanonicznej
+    char canonicalSeq[MAX_SEQUENCE_LENGTH];
+    int transform;
+    getCanonicalSequence(moveSequence, canonicalSeq, &transform);
+    
+    // Szybkie wyszukiwanie w hash table - O(1) zamiast O(n)
+    HashNode* node = findInHashTable(canonicalSeq);
+    if (node) {
+        // Ruch jest w formie kanonicznej - musimy go odwrócić do oryginalnej orientacji
+        int canonicalMove = node->best_move;
+        int originalMove = canonicalMove;
+        
+        // Znajdź odwrotną transformację
+        if (transform != 0) {
+            // Testuj wszystkie transformacje, żeby znaleźć tę która odwraca kanoniczną
+            for (int t = 0; t < 8; t++) {
+                int testMove = transformMove(canonicalMove, t);
+                char testSeq[MAX_SEQUENCE_LENGTH];
+                sprintf(testSeq, "%s,%d", moveSequence, testMove);
+                
+                char testCanonical[MAX_SEQUENCE_LENGTH];
+                int testTransform;
+                getCanonicalSequence(testSeq, testCanonical, &testTransform);
+                
+                // Jeśli po dodaniu ruchu i transformacji dostajemy spójną kanoniczną formę
+                if (testTransform == transform) {
+                    originalMove = testMove;
+                    break;
+                }
+            }
         }
+        
+        printf("[OPENING] Using book move %d for sequence: %s (canonical: %s, move: %d)\n", 
+               originalMove, moveSequence, canonicalSeq, canonicalMove);
+        return originalMove;
     }
     
     return 0; // Nie znaleziono w książce
@@ -372,13 +489,42 @@ void learnOpenings(int maxDepth, int searchDepth, const char* filename) {
             }
         }
         
-        // Równoległa analiza: każdy wątek bierze jeden pierwszy ruch
-        // i analizuje wszystkie możliwe odpowiedzi przeciwnika
+        // Równoległa analiza: analizuj reprezentatywne sekwencje dla różnych przypadków
+        // Pokrywamy główne sytuacje strategiczne:
+        int predefinedSequences[][2] = {
+            // 1. Gracz1 gra środek, Gracz2 różne odpowiedzi
+            {33, 12},  // środek -> lewy górny róg
+            {33, 11},  // środek -> drugi róg
+            {33, 13},  // środek -> trzeci róg
+            
+            {33, 21},  // środek -> czwarty róg
+            {33, 22},  // środek -> bok górny
+            {33, 23},  // środek -> bok lewy
+            
+            // 2. Gracz1 gra róg, Gracz2 odpowiada środkiem (strategia obronna)
+            {11, 33},  // lewy górny róg -> środek (my jako gracz2)
+            {12, 33},  // lewy dolny róg -> środek
+            {13, 33},  // środek -> środek
+
+            {21, 33},  // prawy górny róg -> środek
+            {22, 33},  // prawy dolny 
+            {23, 33},  // środek -> środek
+        };
+        int numSequences = sizeof(predefinedSequences) / sizeof(predefinedSequences[0]);
+        
+        printf("[PARALLEL] Will analyze %d representative sequences with %d threads...\n", numSequences, 
+#ifdef _OPENMP
+               omp_get_max_threads()
+#else
+               1
+#endif
+        );
+        
 #ifdef _OPENMP
         #pragma omp parallel for schedule(dynamic, 1)
 #endif
-        for (int m = 0; m < moveCount; m++) {
-            exploreFromFirstMove(firstMoves[m], maxDepth, searchDepth);
+        for (int s = 0; s < numSequences; s++) {
+            exploreFromPredefinedSequence(predefinedSequences[s][0], predefinedSequences[s][1], maxDepth, searchDepth);
         }
     }
     
@@ -396,78 +542,31 @@ void learnOpenings(int maxDepth, int searchDepth, const char* filename) {
 
 // Równoległa eksploracja pierwszego poziomu (głównych ruchów otwarcia)
 void exploreFirstLevelParallel(int maxDepth, int searchDepth) {
-    printf("[PARALLEL] Analyzing first moves with %d threads...\n", 
-#ifdef _OPENMP
-           omp_get_max_threads()
-#else
-           1
-#endif
-    );
+    printf("[FIRST LEVEL] Using predefined opening moves (skipping heavy analysis)...\n");
     
-    // Lista wszystkich możliwych pierwszych ruchów
-    int firstMoves[25];
-    int moveScores[25];
-    int moveCount = 0;
+    // ZAKODOWANE NAJLEPSZE RUCHY OTWARCIA:
+    // 1. Gracz 1 zawsze gra 33 (środek)
+    // 2. Gracz 2: jeśli 33 wolne to 33, jeśli zajęte to 22 (lewy górny róg)
     
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            firstMoves[moveCount] = (i + 1) * 10 + (j + 1);
-            moveScores[moveCount] = -100000;
-            moveCount++;
+    // Dodaj podstawowe ruchy do książki bez ciężkiej analizy
+    addOpeningEntryThreadSafe("", 33, 5000, 1);  // Pusty -> gracz 1 gra 33
+    
+    // Odpowiedzi gracza 2 na 33
+    addOpeningEntryThreadSafe("33", 14, 4000, 1);  // Jeśli gracz 1 zagrał 33, gracz 2 gra 14 
+
+    // Gdyby gracz 1 nie zagrał 33 (rzadkie), gracz 2 gra środek
+    for (int i = 1; i <= 5; i++) {
+        for (int j = 1; j <= 5; j++) {
+            int move = i * 10 + j;
+            if (move != 33) {  // Wszystkie pierwsze ruchy oprócz 33
+                char seq[10];
+                sprintf(seq, "%d", move);
+                addOpeningEntryThreadSafe(seq, 33, 4500, 1);  // Odpowiedź: środek
+            }
         }
     }
     
-#ifdef _OPENMP
-    #pragma omp parallel for schedule(dynamic, 1)
-#endif
-    for (int m = 0; m < moveCount; m++) {
-        int move = firstMoves[m];
-        int row = (move / 10) - 1;
-        int col = (move % 10) - 1;
-        
-        // Każdy wątek ma własną kopię planszy
-        int local_board[5][5];
-        memcpy(local_board, board, sizeof(board));
-        
-        // Wykonaj pierwszy ruch
-        local_board[row][col] = 1;
-        
-        // Skopiuj planszę do globalnej (thread-safe)
-#ifdef _OPENMP
-        omp_set_lock(&book_lock);
-#endif
-        memcpy(board, local_board, sizeof(board));
-        
-        // Oceń pozycję
-        int score = minimax(searchDepth - 1, -100000, 100000, 2, false, 1);
-        
-        // Przywróć pustą planszę
-        board[row][col] = 0;
-#ifdef _OPENMP
-        omp_unset_lock(&book_lock);
-#endif
-        
-        // Zapisz wynik w lokalnej tablicy
-        moveScores[m] = score;
-        
-        printf("[PARALLEL] First move %d analyzed: score=%d\n", move, score);
-    }
-    
-    // Po zakończeniu równoległej analizy - znajdź najlepszy ruch
-    int bestScore = -100000;
-    int bestMove = 0;
-    
-    for (int i = 0; i < moveCount; i++) {
-        if (moveScores[i] > bestScore) {
-            bestScore = moveScores[i];
-            bestMove = firstMoves[i];
-        }
-    }
-    
-    // Dodaj TYLKO JEDEN wpis dla pustej sekwencji - najlepszy pierwszy ruch
-    addOpeningEntryThreadSafe("", bestMove, bestScore, searchDepth);
-    
-    printf("[PARALLEL] Best first move: %d (score: %d)\n", bestMove, bestScore);
+    printf("[FIRST LEVEL] Added %d predefined opening moves\n", bookSize);
 }
 
 // Thread-safe wrapper dla minimax - kopiuje lokalną planszę do globalnej
@@ -654,6 +753,156 @@ void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth) {
                 // Cofnij drugi ruch
                 localBoard[i][j] = 0;
             }
+        }
+    }
+}
+
+// Eksploruje dalsze ruchy dla predefiniowanej sekwencji 2 ruchów
+void exploreFromPredefinedSequence(int firstMove, int secondMove, int maxDepth, int searchDepth) {
+    if (maxDepth < 3) return;  // Potrzebujemy przynajmniej 3 ruchy
+    
+    printf("[DEEP ANALYSIS] Exploring from sequence %d,%d to depth %d\n", firstMove, secondMove, maxDepth);
+    
+    // Przygotuj planszę z dwoma pierwszymi ruchami
+    int localBoard[5][5];
+    memcpy(localBoard, board, sizeof(board));
+    
+    // Wykonaj pierwszy ruch (gracz 1)
+    int row1 = (firstMove / 10) - 1;
+    int col1 = (firstMove % 10) - 1;
+    localBoard[row1][col1] = 1;
+    
+    // Wykonaj drugi ruch (gracz 2)  
+    int row2 = (secondMove / 10) - 1;
+    int col2 = (secondMove % 10) - 1;
+    localBoard[row2][col2] = 2;
+    
+    // Zbuduj sekwencję startową
+    char startSequence[50];
+    sprintf(startSequence, "%d,%d", firstMove, secondMove);
+    
+    // Rozpocznij rekurencyjną eksplorację od trzeciego ruchu (gracz 1)
+    exploreRecursive(localBoard, startSequence, 1, 2, maxDepth, searchDepth);
+}
+
+// === FUNKCJE SYMETRII I ROTACJI ===
+
+// Konwersja ruch (row,col) -> int i odwrotnie
+typedef struct {
+    int row, col;
+} Position;
+
+Position moveToPosition(int move) {
+    Position pos;
+    pos.row = (move / 10) - 1;  // 0-4
+    pos.col = (move % 10) - 1;  // 0-4
+    return pos;
+}
+
+int positionToMove(Position pos) {
+    return (pos.row + 1) * 10 + (pos.col + 1);
+}
+
+// Transformacje symetrii dla pozycji 5x5
+Position rotate90(Position pos) {
+    return (Position){pos.col, 4 - pos.row};
+}
+
+Position rotate180(Position pos) {
+    return (Position){4 - pos.row, 4 - pos.col};
+}
+
+Position rotate270(Position pos) {
+    return (Position){4 - pos.col, pos.row};
+}
+
+Position flipHorizontal(Position pos) {
+    return (Position){pos.row, 4 - pos.col};
+}
+
+Position flipVertical(Position pos) {
+    return (Position){4 - pos.row, pos.col};
+}
+
+Position flipDiagonal1(Position pos) {  // główna przekątna
+    return (Position){pos.col, pos.row};
+}
+
+Position flipDiagonal2(Position pos) {  // anty-przekątna
+    return (Position){4 - pos.col, 4 - pos.row};
+}
+
+// Tablica wszystkich transformacji
+typedef Position (*TransformFunc)(Position);
+TransformFunc transforms[8] = {
+    NULL,           // identność (brak transformacji)
+    rotate90,
+    rotate180, 
+    rotate270,
+    flipHorizontal,
+    flipVertical,
+    flipDiagonal1,
+    flipDiagonal2
+};
+
+// Transformuj sekwencję ruchów
+void transformSequence(const char* input, char* output, int transformIndex) {
+    if (transformIndex == 0 || transforms[transformIndex] == NULL) {
+        strcpy(output, input);
+        return;
+    }
+    
+    output[0] = '\0';
+    
+    if (strlen(input) == 0) {
+        return;  // Pusta sekwencja
+    }
+    
+    char tempInput[MAX_SEQUENCE_LENGTH];
+    strcpy(tempInput, input);
+    
+    char* token = strtok(tempInput, ",");
+    bool first = true;
+    
+    while (token != NULL) {
+        int move = atoi(token);
+        Position pos = moveToPosition(move);
+        Position newPos = transforms[transformIndex](pos);
+        int newMove = positionToMove(newPos);
+        
+        if (!first) strcat(output, ",");
+        char moveStr[10];
+        sprintf(moveStr, "%d", newMove);
+        strcat(output, moveStr);
+        first = false;
+        
+        token = strtok(NULL, ",");
+    }
+}
+
+// Transformuj pojedynczy ruch
+int transformMove(int move, int transformIndex) {
+    if (transformIndex == 0 || transforms[transformIndex] == NULL) {
+        return move;
+    }
+    
+    Position pos = moveToPosition(move);
+    Position newPos = transforms[transformIndex](pos);
+    return positionToMove(newPos);
+}
+
+// Znajdź kanoniczną (najmniejszą leksykograficznie) reprezentację sekwencji
+void getCanonicalSequence(const char* input, char* canonical, int* bestTransform) {
+    strcpy(canonical, input);
+    *bestTransform = 0;
+    
+    for (int t = 1; t < 8; t++) {
+        char transformed[MAX_SEQUENCE_LENGTH];
+        transformSequence(input, transformed, t);
+        
+        if (strcmp(transformed, canonical) < 0) {
+            strcpy(canonical, transformed);
+            *bestTransform = t;
         }
     }
 }

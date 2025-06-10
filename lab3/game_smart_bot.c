@@ -108,7 +108,8 @@ int main(int argc, char *argv[]) {
   int msg, move;
 
   // OBSŁUGA TRYBU UCZENIA
-  if (argc >= 2 && strstr(argv[1], "--learn") != NULL) {
+  if (argc >= 2 && (strstr(argv[1], "--learn") != NULL || 
+                    (argc > 1 && strstr(argv[1], "--learn-depth") != NULL))) {
     printf("=== OPENING BOOK LEARNING MODE ===\n");
     
     // Parsuj argumenty uczenia: --learn-depth=X-search=Y
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
     clearMoveHistory();
     
     // Rozpocznij uczenie
-    learnOpenings(learnDepth, searchDepth, "opening_book.txt");
+    learnOpenings(learnDepth, searchDepth, "opening_book_2.txt");
     
     // Zwolnij pamięć i zakończ
     freeOpeningBook();
