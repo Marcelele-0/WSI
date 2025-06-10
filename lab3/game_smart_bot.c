@@ -1,5 +1,6 @@
 #include "board.h"
 #include "heuristic.h"
+#include "opening_book.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,10 +9,25 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 
+
 int player, opponent, searchDepth;
+bool learningMode = false;  // Tryb uczenia książki otwarć
+int gameMovesCount = 0;     // Licznik ruchów w grze
 
 // Funkcja bestMove: wybiera najlepszy ruch na podstawie heurystyki i minimax
 int bestMove() {
+    // KROK 1: Sprawdź książkę otwarć (tylko w pierwszych 10 ruchach)
+    char* currentSequence = buildMoveSequence();
+    
+    if (isInOpeningPhase(gameMovesCount)) {
+        int openingMove = getOpeningMove(currentSequence, gameMovesCount);
+        if (openingMove != 0) {
+            printf("[OPENING BOOK] Using move %d from book for sequence: %s\n", openingMove, currentSequence);
+            return openingMove;  // Użyj ruchu z książki
+        }
+    }
+    
+    // KROK 2: Standardowy minimax jeśli brak w książce
     int bestScore = -100000;
     int move = 0;
     int safeMove = 0;
@@ -86,8 +102,41 @@ int main(int argc, char *argv[]) {
   bool end_game;
   int msg, move;
 
+  // OBSŁUGA TRYBU UCZENIA
+  if (argc >= 2 && strstr(argv[1], "--learn") != NULL) {
+    printf("=== OPENING BOOK LEARNING MODE ===\n");
+    
+    // Parsuj argumenty uczenia: --learn-depth=X-search=Y
+    int learnDepth = 6;   // domyślnie
+    int searchDepth = 6;  // domyślnie
+    
+    for (int i = 1; i < argc; i++) {
+      if (strstr(argv[i], "--learn-depth=") != NULL) {
+        sscanf(argv[i], "--learn-depth=%d", &learnDepth);
+      }
+      if (strstr(argv[i], "--search-depth=") != NULL) {
+        sscanf(argv[i], "--search-depth=%d", &searchDepth);
+      }
+    }
+    
+    printf("Learning parameters: depth=%d, search=%d\n", learnDepth, searchDepth);
+    
+    // Inicjuj planszę
+    setBoard();
+    clearMoveHistory();
+    
+    // Rozpocznij uczenie
+    learnOpenings(learnDepth, searchDepth, "opening_book.txt");
+    
+    // Zwolnij pamięć i zakończ
+    freeOpeningBook();
+    return 0;
+  }
+
+  // NORMALNY TRYB GRY
   if (argc != 6) {
-    printf("Usage: %s <IP> <PORT> <PLAYER_ID> <NAME> <DEPTH>\n", argv[0]);
+    printf("Usage: %s <IP> <PORT> <PLAYER_ID> <n> <DEPTH>\n", argv[0]);
+    printf("   or: %s --learn-depth=X --search-depth=Y\n", argv[0]);
     return -1;
   }
   
@@ -130,6 +179,11 @@ int main(int argc, char *argv[]) {
   setBoard();
   end_game = false;
   sscanf(argv[3], "%d", &player);
+  
+  // Inicjalizacja książki otwarć
+  clearMoveHistory();
+  gameMovesCount = 0;
+  loadOpeningBook("opening_book.txt");  // Załaduj książkę jeśli istnieje
 
   while (!end_game) {
     memset(server_message, '\0', sizeof(server_message));
@@ -142,11 +196,15 @@ int main(int argc, char *argv[]) {
     msg = msg / 100;
     if (move != 0) {
       setMove(move, 3 - player);
+      addMoveToHistory(move);  // Dodaj ruch przeciwnika do historii
+      gameMovesCount++;
     }
     if ((msg == 0) || (msg == 6)) {
       move = bestMove();
       printf("[SMART BOT] setMove called with move=%d, player=%d (my move)\n", move, player);
       setMove(move, player);
+      addMoveToHistory(move);  // Dodaj swój ruch do historii  
+      gameMovesCount++;
       memset(player_message, '\0', sizeof(player_message));
       snprintf(player_message, sizeof(player_message), "%d", move);
       if (send(server_socket, player_message, strlen(player_message), 0) < 0) {
@@ -167,6 +225,9 @@ int main(int argc, char *argv[]) {
 
   // Close socket
   close(server_socket);
+  
+  // Zwolnij pamięć książki otwarć
+  freeOpeningBook();
 
   return 0;
 }
