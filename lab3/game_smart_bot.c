@@ -19,12 +19,17 @@ int bestMove() {
     // KROK 1: Sprawdź książkę otwarć (tylko w pierwszych 10 ruchach)
     char* currentSequence = buildMoveSequence();
     
+    printf("[DEBUG] bestMove called, gameMovesCount=%d, sequence='%s'\n", gameMovesCount, currentSequence);
+    
     if (isInOpeningPhase(gameMovesCount)) {
         int openingMove = getOpeningMove(currentSequence, gameMovesCount);
+        printf("[DEBUG] Opening phase - checked book for '%s', got move: %d\n", currentSequence, openingMove);
         if (openingMove != 0) {
             printf("[OPENING BOOK] Using move %d from book for sequence: %s\n", openingMove, currentSequence);
             return openingMove;  // Użyj ruchu z książki
         }
+    } else {
+        printf("[DEBUG] Not in opening phase (move count: %d > %d)\n", gameMovesCount, MAX_OPENING_MOVES);
     }
     
     // KROK 2: Standardowy minimax jeśli brak w książce
@@ -103,7 +108,8 @@ int main(int argc, char *argv[]) {
   int msg, move;
 
   // OBSŁUGA TRYBU UCZENIA
-  if (argc >= 2 && strstr(argv[1], "--learn") != NULL) {
+  if (argc >= 2 && (strstr(argv[1], "--learn") != NULL || 
+                    (argc > 1 && strstr(argv[1], "--learn-depth") != NULL))) {
     printf("=== OPENING BOOK LEARNING MODE ===\n");
     
     // Parsuj argumenty uczenia: --learn-depth=X-search=Y
@@ -126,7 +132,7 @@ int main(int argc, char *argv[]) {
     clearMoveHistory();
     
     // Rozpocznij uczenie
-    learnOpenings(learnDepth, searchDepth, "opening_book.txt");
+    learnOpenings(learnDepth, searchDepth, "opening_book_2.txt");
     
     // Zwolnij pamięć i zakończ
     freeOpeningBook();
@@ -183,7 +189,7 @@ int main(int argc, char *argv[]) {
   // Inicjalizacja książki otwarć
   clearMoveHistory();
   gameMovesCount = 0;
-  loadOpeningBook("opening_book.txt");  // Załaduj książkę jeśli istnieje
+  loadOpeningBook("opening_book_2.txt");  // Załaduj książkę jeśli istnieje
 
   while (!end_game) {
     memset(server_message, '\0', sizeof(server_message));
