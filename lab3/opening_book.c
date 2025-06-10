@@ -225,23 +225,32 @@ bool isInOpeningPhase(int moveCount) {
 }
 
 int getOpeningMove(const char* moveSequence, int moveCount) {
+    printf("[DEBUG GET] Called with sequence='%s', moveCount=%d\n", moveSequence, moveCount);
+    
     // Sprawdź czy jesteśmy w fazie otwarcia
     if (!isInOpeningPhase(moveCount)) {
+        printf("[DEBUG GET] Not in opening phase\n");
         return 0; // Poza fazą otwarcia
     }
     
     if (openingBook == NULL || bookSize == 0) {
+        printf("[DEBUG GET] No opening book loaded\n");
         return 0; // Brak książki
     }
+    
+    printf("[DEBUG GET] Opening book has %d entries\n", bookSize);
     
     // Konwertuj sekwencję do formy kanonicznej
     char canonicalSeq[MAX_SEQUENCE_LENGTH];
     int transform;
     getCanonicalSequence(moveSequence, canonicalSeq, &transform);
     
+    printf("[DEBUG GET] Canonical sequence: '%s', transform: %d\n", canonicalSeq, transform);
+    
     // Szybkie wyszukiwanie w hash table - O(1) zamiast O(n)
     HashNode* node = findInHashTable(canonicalSeq);
     if (node) {
+        printf("[DEBUG GET] Found in hash table: move=%d\n", node->best_move);
         // Ruch jest w formie kanonicznej - musimy go odwrócić do oryginalnej orientacji
         int canonicalMove = node->best_move;
         int originalMove = canonicalMove;
@@ -269,6 +278,17 @@ int getOpeningMove(const char* moveSequence, int moveCount) {
         printf("[OPENING] Using book move %d for sequence: %s (canonical: %s, move: %d)\n", 
                originalMove, moveSequence, canonicalSeq, canonicalMove);
         return originalMove;
+    } else {
+        printf("[DEBUG GET] Not found in hash table for '%s'\n", canonicalSeq);
+        
+        // Fallback - szukaj w tablicy liniowo
+        for (int i = 0; i < bookSize; i++) {
+            if (strcmp(openingBook[i].sequence, canonicalSeq) == 0) {
+                printf("[DEBUG GET] Found in linear search: move=%d\n", openingBook[i].best_move);
+                return openingBook[i].best_move;
+            }
+        }
+        printf("[DEBUG GET] Not found anywhere\n");
     }
     
     return 0; // Nie znaleziono w książce
@@ -293,13 +313,25 @@ bool loadOpeningBook(const char* filename) {
         // Pomiń komentarze i puste linie
         if (line[0] == '#' || line[0] == '\n' || line[0] == '\r') continue;
         
+        printf("[DEBUG LOAD] Processing line: '%s'\n", line);
+        
         char sequence[MAX_SEQUENCE_LENGTH];
         int move, score, depth;
         
+        // Specjalne parsowanie dla pustej sekwencji
+        if (sscanf(line, " -> %d (%d) [%d]", &move, &score, &depth) == 3) {
+            // Pusta sekwencja
+            addOpeningEntry("", move, score, depth);
+            loaded++;
+            printf("[DEBUG LOAD] Empty sequence -> %d (score=%d, depth=%d)\n", move, score, depth);
+        }
         // Format: "sequence -> move (score) [depth]"
-        if (sscanf(line, "%s -> %d (%d) [%d]", sequence, &move, &score, &depth) == 4) {
+        else if (sscanf(line, "%s -> %d (%d) [%d]", sequence, &move, &score, &depth) == 4) {
             addOpeningEntry(sequence, move, score, depth);
             loaded++;
+            printf("[DEBUG LOAD] %s -> %d (score=%d, depth=%d)\n", sequence, move, score, depth);
+        } else {
+            printf("[DEBUG LOAD] Failed to parse line: '%s'\n", line);
         }
     }
     
@@ -520,11 +552,25 @@ void learnOpenings(int maxDepth, int searchDepth, const char* filename) {
 #endif
         );
         
+        // Dodaj licznik postępu
+        int completed = 0;
+
 #ifdef _OPENMP
         #pragma omp parallel for schedule(dynamic, 1)
 #endif
         for (int s = 0; s < numSequences; s++) {
+            printf("[PROGRESS] Starting sequence %d/%d: %d,%d\n", s+1, numSequences, 
+                   predefinedSequences[s][0], predefinedSequences[s][1]);
+            
             exploreFromPredefinedSequence(predefinedSequences[s][0], predefinedSequences[s][1], maxDepth, searchDepth);
+            
+#ifdef _OPENMP
+            #pragma omp atomic
+#endif
+            completed++;
+            
+            printf("[PROGRESS] Completed %d/%d sequences (%.1f%%)\n", 
+                   completed, numSequences, (completed * 100.0) / numSequences);
         }
     }
     
@@ -648,7 +694,7 @@ void exploreRecursive(int localBoard[5][5], const char* currentSequence, int cur
                     continue; // Pomiń ten ruch
                 }
                 
-                // Oceń pozycję za pomocą minimax
+                // Oceń pozycję za pomocą minimax z pełną głębokością
                 int score = minimaxThreadSafe(localBoard, searchDepth - 1, -100000, 100000, 
                                             3 - currentPlayer, false, currentPlayer);
                 
@@ -667,14 +713,23 @@ void exploreRecursive(int localBoard[5][5], const char* currentSequence, int cur
     if (bestMove != 0) {
         addOpeningEntryThreadSafe(currentSequence, bestMove, bestScore, searchDepth);
         
-        // Kontynuuj rekurencję dla wszystkich odpowiedzi przeciwnika
+        // OPTYMALIZACJA: Kontynuuj rekurencję tylko dla NAJLEPSZYCH 3-5 odpowiedzi przeciwnika
         if (depth < maxDepth) {
             // Wykonaj najlepszy ruch
             int bestRow = (bestMove / 10) - 1;
             int bestCol = (bestMove % 10) - 1;
             localBoard[bestRow][bestCol] = currentPlayer;
             
-            // Przeszukaj wszystkie możliwe odpowiedzi przeciwnika
+            // Znajdź najlepsze odpowiedzi przeciwnika (max 5 zamiast wszystkich 20+)
+            typedef struct {
+                int move;
+                int score;
+            } MoveScore;
+            
+            MoveScore topMoves[10];
+            int topCount = 0;
+            
+            // Oceń wszystkie możliwe odpowiedzi
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 5; j++) {
                     if (localBoard[i][j] == 0) {
@@ -690,17 +745,52 @@ void exploreRecursive(int localBoard[5][5], const char* currentSequence, int cur
                             continue; // Pomiń ten ruch
                         }
                         
-                        // Zbuduj nową sekwencję
-                        char newSequence[MAX_SEQUENCE_LENGTH];
-                        sprintf(newSequence, "%s,%d", currentSequence, responseMove);
+                        // Oceń pozycję z większą głębokością (połowa pełnej głębokości)
+                        int preselectDepth = searchDepth / 2;
+                        if (preselectDepth < 3) preselectDepth = 3;
                         
-                        // Rekurencyjnie eksploruj dalej
-                        exploreRecursive(localBoard, newSequence, currentPlayer, 
-                                       depth + 1, maxDepth, searchDepth);
+                        int score = minimaxThreadSafe(localBoard, preselectDepth, -100000, 100000, 
+                                                    currentPlayer, true, 3 - currentPlayer);
+                        
+                        // Dodaj do top 5 jeśli warto
+                        if (topCount < 5) {
+                            topMoves[topCount].move = responseMove;
+                            topMoves[topCount].score = score;
+                            topCount++;
+                        } else {
+                            // Znajdź najgorszy z top 5 i zastąp jeśli lepszy
+                            int worstIdx = 0;
+                            for (int k = 1; k < 5; k++) {
+                                if (topMoves[k].score < topMoves[worstIdx].score) {
+                                    worstIdx = k;
+                                }
+                            }
+                            if (score > topMoves[worstIdx].score) {
+                                topMoves[worstIdx].move = responseMove;
+                                topMoves[worstIdx].score = score;
+                            }
+                        }
                         
                         localBoard[i][j] = 0; // Cofnij ruch przeciwnika
                     }
                 }
+            }
+            
+            // Rekurencyjnie eksploruj tylko top ruchy
+            for (int t = 0; t < topCount; t++) {
+                int responseMove = topMoves[t].move;
+                int row = (responseMove / 10) - 1;
+                int col = (responseMove % 10) - 1;
+                
+                localBoard[row][col] = 3 - currentPlayer;
+                
+                char newSequence[MAX_SEQUENCE_LENGTH];
+                sprintf(newSequence, "%s,%d", currentSequence, responseMove);
+                
+                exploreRecursive(localBoard, newSequence, currentPlayer, 
+                               depth + 1, maxDepth, searchDepth);
+                
+                localBoard[row][col] = 0;
             }
             
             // Cofnij najlepszy ruch

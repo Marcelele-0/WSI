@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   // Inicjalizacja książki otwarć
   clearMoveHistory();
   gameMovesCount = 0;
-  loadOpeningBook("opening_book.txt");  // Załaduj książkę jeśli istnieje
+  loadOpeningBook("opening_book_2.txt");  // Załaduj książkę jeśli istnieje
 
   while (!end_game) {
     memset(server_message, '\0', sizeof(server_message));
