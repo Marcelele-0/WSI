@@ -6,6 +6,7 @@
 #define MAX_OPENING_MOVES 10
 #define MAX_SEQUENCE_LENGTH 100
 #define MAX_BOOK_ENTRIES 10000
+#define HASH_TABLE_SIZE 50000  // Rozmiar hash table (liczba pierwsza dla lepszego hashowania)
 
 // Struktura wpisu w książce otwarć
 typedef struct {
@@ -14,6 +15,21 @@ typedef struct {
     int score;                          // Ocena minimax dla tego ruchu
     int depth_analyzed;                 // Głębokość analizy użyta
 } OpeningEntry;
+
+// Struktura węzła hash table (łańcuchowe rozwiązywanie kolizji)
+typedef struct HashNode {
+    char sequence[MAX_SEQUENCE_LENGTH];
+    int best_move;
+    int score;
+    int depth_analyzed;
+    struct HashNode* next;
+} HashNode;
+
+// Hash table
+typedef struct {
+    HashNode* buckets[HASH_TABLE_SIZE];
+    int size;  // Liczba elementów
+} HashTable;
 
 // === GŁÓWNE FUNKCJE ===
 
@@ -29,6 +45,8 @@ bool isInOpeningPhase(int moveCount);
 void learnOpenings(int maxDepth, int searchDepth, const char* filename);
 void exploreFirstLevelParallel(int maxDepth, int searchDepth);  // Parallel learning
 void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth);  // Parallel deeper analysis
+void exploreRecursive(int localBoard[5][5], const char* currentSequence, int currentPlayer, 
+                     int depth, int maxDepth, int searchDepth);  // Thread-safe recursive exploration
 
 // === FUNKCJE POMOCNICZE ===
 

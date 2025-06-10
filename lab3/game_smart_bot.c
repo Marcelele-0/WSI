@@ -19,12 +19,17 @@ int bestMove() {
     // KROK 1: Sprawdź książkę otwarć (tylko w pierwszych 10 ruchach)
     char* currentSequence = buildMoveSequence();
     
+    printf("[DEBUG] bestMove called, gameMovesCount=%d, sequence='%s'\n", gameMovesCount, currentSequence);
+    
     if (isInOpeningPhase(gameMovesCount)) {
         int openingMove = getOpeningMove(currentSequence, gameMovesCount);
+        printf("[DEBUG] Opening phase - checked book for '%s', got move: %d\n", currentSequence, openingMove);
         if (openingMove != 0) {
             printf("[OPENING BOOK] Using move %d from book for sequence: %s\n", openingMove, currentSequence);
             return openingMove;  // Użyj ruchu z książki
         }
+    } else {
+        printf("[DEBUG] Not in opening phase (move count: %d > %d)\n", gameMovesCount, MAX_OPENING_MOVES);
     }
     
     // KROK 2: Standardowy minimax jeśli brak w książce
