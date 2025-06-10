@@ -28,6 +28,7 @@ bool isInOpeningPhase(int moveCount);
 // Auto-uczenie książki
 void learnOpenings(int maxDepth, int searchDepth, const char* filename);
 void exploreFirstLevelParallel(int maxDepth, int searchDepth);  // Parallel learning
+void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth);  // Parallel deeper analysis
 
 // === FUNKCJE POMOCNICZE ===
 

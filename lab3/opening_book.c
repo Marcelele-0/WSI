@@ -353,26 +353,32 @@ void learnOpenings(int maxDepth, int searchDepth, const char* filename) {
         exploreFirstLevelParallel(maxDepth, searchDepth);
     }
     
-    // KROK 2: Sekwencyjna analiza dalszych poziomów
+    // KROK 2: Równoległa analiza dalszych poziomów
     if (maxDepth >= 2) {
-        printf("\n[SEQUENTIAL] Analyzing deeper positions...\n");
+        printf("\n[PARALLEL] Analyzing deeper positions with %d threads...\n", 
+#ifdef _OPENMP
+               omp_get_max_threads()
+#else
+               1
+#endif
+        );
         
-        // Analizuj wszystkie możliwe pierwsze ruchy i ich kontynuacje
+        // Lista wszystkich pierwszych ruchów do równoległej analizy
+        int firstMoves[25];
+        int moveCount = 0;
         for (int i = 1; i <= 5; i++) {
             for (int j = 1; j <= 5; j++) {
-                int firstMove = i * 10 + j;
-                char firstSequence[10];
-                sprintf(firstSequence, "%d", firstMove);
-                
-                // Wykonaj pierwszy ruch na planszy
-                board[i-1][j-1] = 1;
-                
-                // Eksploruj dalej od tego pierwszego ruchu
-                explorePosition(firstSequence, 2, 2, maxDepth, searchDepth);
-                
-                // Cofnij ruch
-                board[i-1][j-1] = 0;
+                firstMoves[moveCount++] = i * 10 + j;
             }
+        }
+        
+        // Równoległa analiza: każdy wątek bierze jeden pierwszy ruch
+        // i analizuje wszystkie możliwe odpowiedzi przeciwnika
+#ifdef _OPENMP
+        #pragma omp parallel for schedule(dynamic, 1)
+#endif
+        for (int m = 0; m < moveCount; m++) {
+            exploreFromFirstMove(firstMoves[m], maxDepth, searchDepth);
         }
     }
     
@@ -462,4 +468,109 @@ void exploreFirstLevelParallel(int maxDepth, int searchDepth) {
     addOpeningEntryThreadSafe("", bestMove, bestScore, searchDepth);
     
     printf("[PARALLEL] Best first move: %d (score: %d)\n", bestMove, bestScore);
+}
+
+// Funkcja do eksploracji wszystkich pozycji zaczynających się od danego pierwszego ruchu
+void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth) {
+    if (maxDepth < 2) return;
+    
+    int row = (firstMove / 10) - 1;
+    int col = (firstMove % 10) - 1;
+    
+    // Wykonaj pierwszy ruch na lokalnej kopii planszy
+    int localBoard[5][5];
+    memcpy(localBoard, board, sizeof(board));
+    localBoard[row][col] = 1;
+    
+    char firstSequence[10];
+    sprintf(firstSequence, "%d", firstMove);
+    
+    // Thread-safe: każdy wątek używa swojej kopii planszy
+    // Synchronizacja tylko przy zapisie do książki
+    
+    // Analizuj wszystkie możliwe odpowiedzi przeciwnika (gracz 2)
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (localBoard[i][j] == 0) {
+                int secondMove = (i + 1) * 10 + (j + 1);
+                
+                // Wykonaj drugi ruch
+                localBoard[i][j] = 2;
+                
+                // Sprawdź czy to nie natychmiastowa wygrana/przegrana
+                bool skipMove = false;
+                
+                // Skopiuj lokalną planszę do globalnej dla sprawdzenia win/lose
+#ifdef _OPENMP
+                omp_set_lock(&book_lock);
+#endif
+                memcpy(board, localBoard, sizeof(board));
+                
+                if (winCheck(2)) {
+                    // Przeciwnik wygrał - pomiń tę linię
+                    skipMove = true;
+                } else if (loseCheck(2)) {
+                    // Przeciwnik popełnił samobójczy ruch - pomiń
+                    skipMove = true;
+                }
+                
+                if (!skipMove) {
+                    // Znajdź najlepszy ruch dla gracza 1
+                    int bestMove = 0;
+                    int bestScore = -100000;
+                    
+                    // Przeszukaj wszystkie możliwe trzecie ruchy
+                    for (int ii = 0; ii < 5; ii++) {
+                        for (int jj = 0; jj < 5; jj++) {
+                            if (board[ii][jj] == 0) {
+                                int thirdMove = (ii + 1) * 10 + (jj + 1);
+                                board[ii][jj] = 1;
+                                
+                                if (winCheck(1)) {
+                                    board[ii][jj] = 0;
+                                    bestMove = thirdMove;
+                                    bestScore = 10000;
+                                    break;
+                                } else if (!loseCheck(1)) {
+                                    int score = minimax(searchDepth - 1, -100000, 100000, 2, false, 1);
+                                    if (score > bestScore) {
+                                        bestScore = score;
+                                        bestMove = thirdMove;
+                                    }
+                                }
+                                board[ii][jj] = 0;
+                            }
+                        }
+                        if (bestScore == 10000) break;
+                    }
+                    
+                    // Dodaj do książki jeśli znaleziono dobry ruch
+                    if (bestMove != 0) {
+                        char sequence[50];
+                        sprintf(sequence, "%d,%d", firstMove, secondMove);
+                        addOpeningEntryThreadSafe(sequence, bestMove, bestScore, searchDepth);
+                    }
+                }
+                
+#ifdef _OPENMP
+                omp_unset_lock(&book_lock);
+#endif
+                
+                // Cofnij drugi ruch
+                localBoard[i][j] = 0;
+                
+                // UWAGA: Rekurencja dla głębszych poziomów poza lockiem!
+                if (maxDepth >= 3 && !skipMove) {
+                    char sequence[50];
+                    sprintf(sequence, "%d,%d", firstMove, secondMove);
+                    
+                    // Każdy wątek używa swojej kopii planszy dla rekurencji
+                    memcpy(board, localBoard, sizeof(board));
+                    board[i-1][j-1] = 2;  // Przywróć drugi ruch
+                    explorePosition(sequence, 1, 3, maxDepth, searchDepth);
+                    board[i-1][j-1] = 0;  // Cofnij
+                }
+            }
+        }
+    }
 }
