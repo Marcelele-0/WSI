@@ -15,105 +15,6 @@ int bookCapacity = 0;
 int moveHistory[25];
 int historyLength = 0;
 
-// Hash table dla szybkiego wyszukiwania
-HashTable* hashTable = NULL;
-
-// === FUNKCJE HASH TABLE ===
-
-// Prosta funkcja hash dla stringów (djb2 algorithm)
-unsigned int hash_string(const char* str) {
-    unsigned int hash = 5381;
-    int c;
-    while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; // hash * 33 + c
-    }
-    return hash % HASH_TABLE_SIZE;
-}
-
-// Inicjalizacja hash table
-void initHashTable(void) {
-    if (hashTable == NULL) {
-        hashTable = malloc(sizeof(HashTable));
-        if (!hashTable) {
-            printf("Error: Cannot allocate memory for hash table!\n");
-            exit(1);
-        }
-        for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-            hashTable->buckets[i] = NULL;
-        }
-        hashTable->size = 0;
-    }
-}
-
-// Dodaj wpis do hash table
-void hashTableInsert(const char* sequence, int move, int score, int depth) {
-    if (!hashTable) initHashTable();
-    
-    unsigned int index = hash_string(sequence);
-    
-    // Sprawdź czy już istnieje (update)
-    HashNode* current = hashTable->buckets[index];
-    while (current) {
-        if (strcmp(current->sequence, sequence) == 0) {
-            current->best_move = move;
-            current->score = score;
-            current->depth_analyzed = depth;
-            return;
-        }
-        current = current->next;
-    }
-    
-    // Dodaj nowy węzeł
-    HashNode* newNode = malloc(sizeof(HashNode));
-    if (!newNode) {
-        printf("Error: Cannot allocate memory for hash node!\n");
-        exit(1);
-    }
-    
-    strcpy(newNode->sequence, sequence);
-    newNode->best_move = move;
-    newNode->score = score;
-    newNode->depth_analyzed = depth;
-    newNode->next = hashTable->buckets[index];
-    hashTable->buckets[index] = newNode;
-    hashTable->size++;
-}
-
-// Znajdź wpis w hash table
-HashNode* hashTableFind(const char* sequence) {
-    if (!hashTable) return NULL;
-    
-    unsigned int index = hash_string(sequence);
-    HashNode* current = hashTable->buckets[index];
-    
-    while (current) {
-        if (strcmp(current->sequence, sequence) == 0) {
-            return current;
-        }
-        current = current->next;
-    }
-    
-    return NULL;
-}
-
-// Zwolnij pamięć hash table
-void freeHashTable(void) {
-    if (!hashTable) return;
-    
-    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-        HashNode* current = hashTable->buckets[i];
-        while (current) {
-            HashNode* temp = current;
-            current = current->next;
-            free(temp);
-        }
-        hashTable->buckets[i] = NULL;
-    }
-    
-    free(hashTable);
-    hashTable = NULL;
-}
-
 // === ZARZĄDZANIE HISTORIĄ RUCHÓW ===
 
 void clearMoveHistory(void) {
@@ -240,16 +141,17 @@ int getOpeningMove(const char* moveSequence, int moveCount) {
         return 0; // Poza fazą otwarcia
     }
     
-    if (!hashTable || hashTable->size == 0) {
+    if (openingBook == NULL || bookSize == 0) {
         return 0; // Brak książki
     }
     
-    // Znajdź sekwencję w hash table - O(1) zamiast O(n)!
-    HashNode* node = hashTableFind(moveSequence);
-    if (node) {
-        printf("[OPENING] Using book move %d for sequence: %s\n", 
-               node->best_move, moveSequence);
-        return node->best_move;
+    // Znajdź sekwencję w książce
+    for (int i = 0; i < bookSize; i++) {
+        if (strcmp(openingBook[i].sequence, moveSequence) == 0) {
+            printf("[OPENING] Using book move %d for sequence: %s\n", 
+                   openingBook[i].best_move, moveSequence);
+            return openingBook[i].best_move;
+        }
     }
     
     return 0; // Nie znaleziono w książce
@@ -265,7 +167,6 @@ bool loadOpeningBook(const char* filename) {
     }
     
     initOpeningBook();
-    initHashTable();  // Inicjalizuj hash table
     bookSize = 0;
     
     char line[200];
@@ -280,15 +181,13 @@ bool loadOpeningBook(const char* filename) {
         
         // Format: "sequence -> move (score) [depth]"
         if (sscanf(line, "%s -> %d (%d) [%d]", sequence, &move, &score, &depth) == 4) {
-            addOpeningEntry(sequence, move, score, depth);  // Stara tablica (dla kompatybilności)
-            hashTableInsert(sequence, move, score, depth);  // Hash table (dla szybkości)
+            addOpeningEntry(sequence, move, score, depth);
             loaded++;
         }
     }
     
     fclose(file);
-    printf("[OPENING] Loaded %d entries from %s (hash table: %d entries)\n", 
-           loaded, filename, hashTable ? hashTable->size : 0);
+    printf("[OPENING] Loaded %d entries from %s\n", loaded, filename);
     return true;
 }
 
