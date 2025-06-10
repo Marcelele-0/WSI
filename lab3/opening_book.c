@@ -18,6 +18,10 @@ int historyLength = 0;
 // Hash table dla szybkiego wyszukiwania
 HashNode* hashTable[HASH_TABLE_SIZE];
 
+// Zewnętrzne definicje z board.h
+extern const int win[28][4][2];
+extern const int lose[48][3][2];
+
 // === FUNKCJE HASH TABLE ===
 
 // Funkcja hash - djb2 algorithm
@@ -615,300 +619,125 @@ void exploreFirstLevelParallel(int maxDepth, int searchDepth) {
     printf("[FIRST LEVEL] Added %d predefined opening moves\n", bookSize);
 }
 
-// Thread-safe wrapper dla minimax - kopiuje lokalną planszę do globalnej
-int minimaxThreadSafe(int localBoard[5][5], int depth, int alpha, int beta, int currentPlayer, bool maximizing, int player) {
-#ifdef _OPENMP
-    omp_set_lock(&book_lock);
-#endif
-    
-    // Skopiuj lokalną planszę do globalnej
-    memcpy(board, localBoard, sizeof(board));
-    
-    // Wywołaj standardowy minimax
-    int result = minimax(depth, alpha, beta, currentPlayer, maximizing, player);
-    
-#ifdef _OPENMP
-    omp_unset_lock(&book_lock);
-#endif
-    
-    return result;
-}
+// === LOKALNE WERSJE FUNKCJI (BEZ MUTEX) ===
 
-// Thread-safe sprawdzenie wygranej/przegranej
-bool winCheckThreadSafe(int localBoard[5][5], int player) {
-#ifdef _OPENMP
-    omp_set_lock(&book_lock);
-#endif
-    memcpy(board, localBoard, sizeof(board));
-    bool result = winCheck(player);
-#ifdef _OPENMP
-    omp_unset_lock(&book_lock);
-#endif
-    return result;
-}
-
-bool loseCheckThreadSafe(int localBoard[5][5], int player) {
-#ifdef _OPENMP
-    omp_set_lock(&book_lock);
-#endif
-    memcpy(board, localBoard, sizeof(board));
-    bool result = loseCheck(player);
-#ifdef _OPENMP
-    omp_unset_lock(&book_lock);
-#endif
-    return result;
-}
-
-// Funkcja do eksploracji wszystkich pozycji zaczynających się od danego pierwszego ruchu
-// Funkcja rekurencyjna dla eksploracji głębszych poziomów (thread-safe)
-void exploreRecursive(int localBoard[5][5], const char* currentSequence, int currentPlayer, 
-                     int depth, int maxDepth, int searchDepth) {
-    if (depth > maxDepth) return;
-    
-    // Progress tracking - pokaż aktualną analizę
-    static int depth1_completed = 0;
-    static int depth2_completed = 0;
-    
-    if (depth == 1) {
-#ifdef _OPENMP
-        #pragma omp atomic
-#endif
-        depth1_completed++;
-        
-        if (depth1_completed % 10 == 0) {
-            printf("[PROGRESS DEEP] Level 1: Completed %d positions, analyzing: %s\n", 
-                   depth1_completed, currentSequence);
+bool winCheckLocal(int localBoard[5][5], int player) {
+    for (int i = 0; i < 28; i++) {
+        if ((localBoard[win[i][0][0]][win[i][0][1]] == player) &&
+            (localBoard[win[i][1][0]][win[i][1][1]] == player) &&
+            (localBoard[win[i][2][0]][win[i][2][1]] == player) &&
+            (localBoard[win[i][3][0]][win[i][3][1]] == player)) {
+            return true;
         }
     }
-    
-    if (depth == 2) {
-#ifdef _OPENMP
-        #pragma omp atomic
-#endif
-        depth2_completed++;
-        
-        if (depth2_completed % 50 == 0) {
-            printf("[PROGRESS DEEP] Level 2: Completed %d positions, current: %s\n", 
-                   depth2_completed, currentSequence);
+    return false;
+}
+
+bool loseCheckLocal(int localBoard[5][5], int player) {
+    for (int i = 0; i < 48; i++) {
+        if ((localBoard[lose[i][0][0]][lose[i][0][1]] == player) &&
+            (localBoard[lose[i][1][0]][lose[i][1][1]] == player) &&
+            (localBoard[lose[i][2][0]][lose[i][2][1]] == player)) {
+            return true;
         }
     }
+    return false;
+}
+
+int evaluateBoardLocal(int localBoard[5][5], int player) {
+    // Skopiuj logikę z heuristic.c ale używaj localBoard
+    int score = 0;
     
-    // Znajdź najlepszy ruch dla aktualnego gracza
-    int bestMove = 0;
-    int bestScore = -100000;
-    bool foundWinningMove = false;
+    // Preferuj środek planszy
+    if (localBoard[2][2] == player) score += 10;
     
-    // Przeszukaj wszystkie możliwe ruchy
+    // Oceń pozycję na podstawie kontroli nad polami
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
-            if (localBoard[i][j] == 0) {
-                int move = (i + 1) * 10 + (j + 1);
-                
-                // Wykonaj ruch
-                localBoard[i][j] = currentPlayer;
-                
-                // Sprawdź czy to natychmiastowa wygrana
-                if (winCheckThreadSafe(localBoard, currentPlayer)) {
-                    localBoard[i][j] = 0;
-                    bestMove = move;
-                    bestScore = 10000;
-                    foundWinningMove = true;
-                    break;
-                }
-                
-                // Sprawdź czy to samobójczy ruch (3 w rzędzie)
-                if (loseCheckThreadSafe(localBoard, currentPlayer)) {
-                    localBoard[i][j] = 0;
-                    continue; // Pomiń ten ruch
-                }
-                
-                // Oceń pozycję za pomocą minimax z pełną głębokością
-                int score = minimaxThreadSafe(localBoard, searchDepth - 1, -100000, 100000, 
-                                            3 - currentPlayer, false, currentPlayer);
-                
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = move;
-                }
-                
-                localBoard[i][j] = 0; // Cofnij ruch
+            if (localBoard[i][j] == player) {
+                // Punkty za kontrolę nad polami blisko środka
+                int distFromCenter = abs(i - 2) + abs(j - 2);
+                score += (5 - distFromCenter);
+            } else if (localBoard[i][j] == (3 - player)) {
+                // Ujemne punkty za kontrolę przeciwnika
+                int distFromCenter = abs(i - 2) + abs(j - 2);
+                score -= (5 - distFromCenter);
             }
         }
-        if (foundWinningMove) break;
     }
     
-    // Dodaj do książki jeśli znaleziono ruch
-    if (bestMove != 0) {
-        addOpeningEntryThreadSafe(currentSequence, bestMove, bestScore, searchDepth);
-        
-        // OPTYMALIZACJA: Kontynuuj rekurencję tylko dla NAJLEPSZYCH 3-5 odpowiedzi przeciwnika
-        if (depth < maxDepth) {
-            // Wykonaj najlepszy ruch
-            int bestRow = (bestMove / 10) - 1;
-            int bestCol = (bestMove % 10) - 1;
-            localBoard[bestRow][bestCol] = currentPlayer;
-            
-            // Znajdź najlepsze odpowiedzi przeciwnika (max 5 zamiast wszystkich 20+)
-            typedef struct {
-                int move;
-                int score;
-            } MoveScore;
-            
-            MoveScore topMoves[5];
-            int topCount = 0;
-            int candidatesEvaluated = 0;
-            
-            // Oceń wszystkie możliwe odpowiedzi
-            for (int i = 0; i < 5; i++) {
-                for (int j = 0; j < 5; j++) {
-                    if (localBoard[i][j] == 0) {
-                        int responseMove = (i + 1) * 10 + (j + 1);
-                        candidatesEvaluated++;
-                        
-                        // Progress dla preselekcji (która jest najwolniejsza)
-                        if (depth <= 2) {
-                            printf("[MINIMAX EVAL] Depth %d: Evaluating candidate move %d (%d) for sequence: %s\n", 
-                                   depth, candidatesEvaluated, responseMove, currentSequence);
+    return score;
+}
+
+int minimaxLocal(int localBoard[5][5], int depth, int alpha, int beta, int currentPlayer, bool maximizing, int player) {
+    // Sprawdź stany końcowe przed sprawdzaniem głębokości
+    if (winCheckLocal(localBoard, player)) return 10000;
+    if (winCheckLocal(localBoard, 3 - player)) return -10000;
+    if (loseCheckLocal(localBoard, player)) return -10000;
+    if (loseCheckLocal(localBoard, 3 - player)) return 10000;
+    
+    // Sprawdź głębokość
+    if (depth == 0) {
+        return evaluateBoardLocal(localBoard, player);
+    }
+    
+    int best;
+    if (maximizing) {
+        best = -100000;
+        bool hasLegalMove = false;
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (localBoard[i][j] == 0) {
+                    localBoard[i][j] = currentPlayer;
+                    
+                    // Sprawdź czy ruch jest legalny
+                    bool isLegal = !(loseCheckLocal(localBoard, currentPlayer) && !winCheckLocal(localBoard, currentPlayer));
+                    
+                    if (isLegal) {
+                        hasLegalMove = true;
+                        int val = minimaxLocal(localBoard, depth - 1, alpha, beta, 3 - currentPlayer, false, player);
+                        localBoard[i][j] = 0;
+                        if (val > best) best = val;
+                        if (best > alpha) alpha = best;
+                        if (beta <= alpha) {
+                            return best; // Przycinanie alfa-beta
                         }
-                        
-                        // Wykonaj ruch przeciwnika
-                        localBoard[i][j] = 3 - currentPlayer;
-                        
-                        // Sprawdź czy przeciwnik nie wygrał lub popełnił błąd
-                        if (winCheckThreadSafe(localBoard, 3 - currentPlayer) || 
-                            loseCheckThreadSafe(localBoard, 3 - currentPlayer)) {
-                            localBoard[i][j] = 0; // Cofnij ruch
-                            continue; // Pomiń ten ruch
-                        }
-                        
-                        // Oceń pozycję z większą głębokością (połowa pełnej głębokości)
-                        int preselectDepth = searchDepth / 2;
-                        if (preselectDepth < 3) preselectDepth = 3;
-                        
-                        int score = minimaxThreadSafe(localBoard, preselectDepth, -100000, 100000, 
-                                                    currentPlayer, true, 3 - currentPlayer);
-                        
-                        // Dodaj do top 5 jeśli warto
-                        if (topCount < 5) {
-                            topMoves[topCount].move = responseMove;
-                            topMoves[topCount].score = score;
-                            topCount++;
-                        } else {
-                            // Znajdź najgorszy z top 5 i zastąp jeśli lepszy
-                            int worstIdx = 0;
-                            for (int k = 1; k < 5; k++) {
-                                if (topMoves[k].score < topMoves[worstIdx].score) {
-                                    worstIdx = k;
-                                }
-                            }
-                            if (score > topMoves[worstIdx].score) {
-                                topMoves[worstIdx].move = responseMove;
-                                topMoves[worstIdx].score = score;
-                            }
-                        }
-                        
-                        localBoard[i][j] = 0; // Cofnij ruch przeciwnika
+                    } else {
+                        localBoard[i][j] = 0; // Cofnij nielegalny ruch
                     }
                 }
             }
-            
-            // Rekurencyjnie eksploruj tylko top ruchy
-            for (int t = 0; t < topCount; t++) {
-                int responseMove = topMoves[t].move;
-                int row = (responseMove / 10) - 1;
-                int col = (responseMove % 10) - 1;
-                
-                localBoard[row][col] = 3 - currentPlayer;
-                
-                char newSequence[MAX_SEQUENCE_LENGTH];
-                sprintf(newSequence, "%s,%d", currentSequence, responseMove);
-                
-                exploreRecursive(localBoard, newSequence, currentPlayer, 
-                               depth + 1, maxDepth, searchDepth);
-                
-                localBoard[row][col] = 0;
-            }
-            
-            // Cofnij najlepszy ruch
-            localBoard[bestRow][bestCol] = 0;
         }
-    }
-}
-
-void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth) {
-    if (maxDepth < 2) return;
-    
-    int row = (firstMove / 10) - 1;
-    int col = (firstMove % 10) - 1;
-    
-    // Każdy wątek ma własną kopię planszy
-    int localBoard[5][5];
-    memcpy(localBoard, board, sizeof(board));
-    localBoard[row][col] = 1;  // Pierwszy ruch
-    
-    char firstSequence[5];
-    sprintf(firstSequence, "%d", firstMove);
-    
-    // Analizuj wszystkie możliwe odpowiedzi przeciwnika (gracz 2)
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
-            if (localBoard[i][j] == 0) {
-                int secondMove = (i + 1) * 10 + (j + 1);
-                
-                // Wykonaj drugi ruch na lokalnej planszy
-                localBoard[i][j] = 2;
-                
-                // Sprawdź czy to nie natychmiastowa wygrana/przegrana
-                bool skipMove = false;
-                
-                if (winCheckThreadSafe(localBoard, 2)) {
-                    skipMove = true;  // Przeciwnik wygrał
-                } else if (loseCheckThreadSafe(localBoard, 2)) {
-                    skipMove = true;  // Przeciwnik popełnił samobójczy ruch
-                }
-                
-                if (!skipMove) {
-                    // Zbuduj sekwencję dwóch ruchów
-                    char sequence[50];
-                    sprintf(sequence, "%d,%d", firstMove, secondMove);
+        if (!hasLegalMove) return -10000;
+        return best;
+    } else {
+        best = 100000;
+        bool hasLegalMove = false;
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (localBoard[i][j] == 0) {
+                    localBoard[i][j] = currentPlayer;
                     
-                    // Użyj funkcji rekurencyjnej dla dalszej eksploracji
-                    exploreRecursive(localBoard, sequence, 1, 2, maxDepth, searchDepth);
+                    bool isLegal = !(loseCheckLocal(localBoard, currentPlayer) && !winCheckLocal(localBoard, currentPlayer));
+                    
+                    if (isLegal) {
+                        hasLegalMove = true;
+                        int val = minimaxLocal(localBoard, depth - 1, alpha, beta, 3 - currentPlayer, true, player);
+                        localBoard[i][j] = 0;
+                        if (val < best) best = val;
+                        if (best < beta) beta = best;
+                        if (beta <= alpha) {
+                            return best;
+                        }
+                    } else {
+                        localBoard[i][j] = 0;
+                    }
                 }
-                
-                // Cofnij drugi ruch
-                localBoard[i][j] = 0;
             }
         }
+        if (!hasLegalMove) return 10000;
+        return best;
     }
-}
-
-// Eksploruje dalsze ruchy dla predefiniowanej sekwencji 2 ruchów
-void exploreFromPredefinedSequence(int firstMove, int secondMove, int maxDepth, int searchDepth) {
-    if (maxDepth < 3) return;  // Potrzebujemy przynajmniej 3 ruchy
-    
-    printf("[DEEP ANALYSIS] Exploring from sequence %d,%d to depth %d\n", firstMove, secondMove, maxDepth);
-    
-    // Przygotuj planszę z dwoma pierwszymi ruchami
-    int localBoard[5][5];
-    memcpy(localBoard, board, sizeof(board));
-    
-    // Wykonaj pierwszy ruch (gracz 1)
-    int row1 = (firstMove / 10) - 1;
-    int col1 = (firstMove % 10) - 1;
-    localBoard[row1][col1] = 1;
-    
-    // Wykonaj drugi ruch (gracz 2)  
-    int row2 = (secondMove / 10) - 1;
-    int col2 = (secondMove % 10) - 1;
-    localBoard[row2][col2] = 2;
-    
-    // Zbuduj sekwencję startową
-    char startSequence[50];
-    sprintf(startSequence, "%d,%d", firstMove, secondMove);
-    
-    // Rozpocznij rekurencyjną eksplorację od trzeciego ruchu (gracz 1)
-    exploreRecursive(localBoard, startSequence, 1, 2, maxDepth, searchDepth);
 }
 
 // === FUNKCJE SYMETRII I ROTACJI ===
@@ -1031,4 +860,255 @@ void getCanonicalSequence(const char* input, char* canonical, int* bestTransform
             *bestTransform = t;
         }
     }
+}
+
+// Funkcja do eksploracji wszystkich pozycji zaczynających się od danego pierwszego ruchu
+// Funkcja rekurencyjna dla eksploracji głębszych poziomów (thread-safe)
+void exploreRecursive(int localBoard[5][5], const char* currentSequence, int currentPlayer, 
+                     int depth, int maxDepth, int searchDepth) {
+    if (depth > maxDepth) return;
+    
+    // Progress tracking - pokaż aktualną analizę
+    static int depth1_completed = 0;
+    static int depth2_completed = 0;
+    
+    if (depth == 1) {
+#ifdef _OPENMP
+        #pragma omp atomic
+#endif
+        depth1_completed++;
+        
+        if (depth1_completed % 10 == 0) {
+            printf("[PROGRESS DEEP] Level 1: Completed %d positions, analyzing: %s\n", 
+                   depth1_completed, currentSequence);
+        }
+    }
+    
+    if (depth == 2) {
+#ifdef _OPENMP
+        #pragma omp atomic
+#endif
+        depth2_completed++;
+        
+        if (depth2_completed % 50 == 0) {
+            printf("[PROGRESS DEEP] Level 2: Completed %d positions, current: %s\n", 
+                   depth2_completed, currentSequence);
+        }
+    }
+    
+    // Znajdź najlepszy ruch dla aktualnego gracza
+    int bestMove = 0;
+    int bestScore = -100000;
+    bool foundWinningMove = false;
+    
+    // Przeszukaj wszystkie możliwe ruchy
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (localBoard[i][j] == 0) {
+                int move = (i + 1) * 10 + (j + 1);
+                
+                // Wykonaj ruch
+                localBoard[i][j] = currentPlayer;
+                
+                // Sprawdź czy to natychmiastowa wygrana
+                if (winCheckLocal(localBoard, currentPlayer)) {
+                    localBoard[i][j] = 0;
+                    bestMove = move;
+                    bestScore = 10000;
+                    foundWinningMove = true;
+                    break;
+                }
+                
+                // Sprawdź czy to samobójczy ruch (3 w rzędzie)
+                if (loseCheckLocal(localBoard, currentPlayer)) {
+                    localBoard[i][j] = 0;
+                    continue; // Pomiń ten ruch
+                }
+                
+                // Oceń pozycję za pomocą minimax z pełną głębokością
+                int score = minimaxLocal(localBoard, searchDepth - 1, -100000, 100000, 
+                                        3 - currentPlayer, false, currentPlayer);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+                
+                localBoard[i][j] = 0; // Cofnij ruch
+            }
+        }
+        if (foundWinningMove) break;
+    }
+    
+    // Dodaj do książki jeśli znaleziono ruch
+    if (bestMove != 0) {
+        addOpeningEntryThreadSafe(currentSequence, bestMove, bestScore, searchDepth);
+        
+        // OPTYMALIZACJA: Kontynuuj rekurencję tylko dla NAJLEPSZYCH 3-5 odpowiedzi przeciwnika
+        if (depth < maxDepth) {
+            // Wykonaj najlepszy ruch
+            int bestRow = (bestMove / 10) - 1;
+            int bestCol = (bestMove % 10) - 1;
+            localBoard[bestRow][bestCol] = currentPlayer;
+            
+            // Znajdź najlepsze odpowiedzi przeciwnika (max 5 zamiast wszystkich 20+)
+            typedef struct {
+                int move;
+                int score;
+            } MoveScore;
+            
+            MoveScore topMoves[8]; // Top 8 ruchów przeciwnika
+            int topCount = 0;
+            int candidatesEvaluated = 0;
+            
+            // Oceń wszystkie możliwe odpowiedzi
+            for (int i = 0; i < 5; i++) {
+                for (int j = 0; j < 5; j++) {
+                    if (localBoard[i][j] == 0) {
+                        int responseMove = (i + 1) * 10 + (j + 1);
+                        candidatesEvaluated++;
+                        
+                        // Progress dla preselekcji (która jest najwolniejsza)
+                        if (depth <= 2) {
+                            printf("[MINIMAX EVAL] Depth %d: Evaluating candidate move %d (%d) for sequence: %s\n", 
+                                   depth, candidatesEvaluated, responseMove, currentSequence);
+                        }
+                        
+                        // Wykonaj ruch przeciwnika
+                        localBoard[i][j] = 3 - currentPlayer;
+                        
+                        // Sprawdź czy przeciwnik nie wygrał lub popełnił błąd
+                        if (winCheckLocal(localBoard, 3 - currentPlayer) || 
+                            loseCheckLocal(localBoard, 3 - currentPlayer)) {
+                            localBoard[i][j] = 0; // Cofnij ruch
+                            continue; // Pomiń ten ruch
+                        }
+                        
+                        // Oceń pozycję z większą głębokością (połowa pełnej głębokości)
+                        int preselectDepth = searchDepth / 2;
+                        if (preselectDepth < 3) preselectDepth = 3;
+                         int score = minimaxLocal(localBoard, preselectDepth, -100000, 100000, 
+                                                currentPlayer, true, 3 - currentPlayer);
+
+                        // Dodaj do top 8 jeśli warto
+                        if (topCount < 8) {
+                            topMoves[topCount].move = responseMove;
+                            topMoves[topCount].score = score;
+                            topCount++;
+                        } else {
+                            // Znajdź najgorszy z top 8 i zastąp jeśli lepszy
+                            int worstIdx = 0;
+                            for (int k = 1; k < 8; k++) {
+                                if (topMoves[k].score < topMoves[worstIdx].score) {
+                                    worstIdx = k;
+                                }
+                            }
+                            if (score > topMoves[worstIdx].score) {
+                                topMoves[worstIdx].move = responseMove;
+                                topMoves[worstIdx].score = score;
+                            }
+                        }
+                        
+                        localBoard[i][j] = 0; // Cofnij ruch przeciwnika
+                    }
+                }
+            }
+            
+            // Rekurencyjnie eksploruj tylko top ruchy
+            for (int t = 0; t < topCount; t++) {
+                int responseMove = topMoves[t].move;
+                int row = (responseMove / 10) - 1;
+                int col = (responseMove % 10) - 1;
+                
+                localBoard[row][col] = 3 - currentPlayer;
+                
+                char newSequence[MAX_SEQUENCE_LENGTH];
+                sprintf(newSequence, "%s,%d", currentSequence, responseMove);
+                
+                exploreRecursive(localBoard, newSequence, currentPlayer, 
+                               depth + 1, maxDepth, searchDepth);
+                
+                localBoard[row][col] = 0;
+            }
+            
+            // Cofnij najlepszy ruch
+            localBoard[bestRow][bestCol] = 0;
+        }
+    }
+}
+
+void exploreFromFirstMove(int firstMove, int maxDepth, int searchDepth) {
+    if (maxDepth < 2) return;
+    
+    int row = (firstMove / 10) - 1;
+    int col = (firstMove % 10) - 1;
+    
+    // Każdy wątek ma własną kopię planszy
+    int localBoard[5][5];
+    memcpy(localBoard, board, sizeof(board));
+    localBoard[row][col] = 1;  // Pierwszy ruch
+    
+    char firstSequence[5];
+    sprintf(firstSequence, "%d", firstMove);
+    
+    // Analizuj wszystkie możliwe odpowiedzi przeciwnika (gracz 2)
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (localBoard[i][j] == 0) {
+                int secondMove = (i + 1) * 10 + (j + 1);
+                
+                // Wykonaj drugi ruch na lokalnej planszy
+                localBoard[i][j] = 2;
+                
+                // Sprawdź czy to nie natychmiastowa wygrana/przegrana
+                bool skipMove = false;
+                
+                if (winCheckLocal(localBoard, 2)) {
+                    skipMove = true;  // Przeciwnik wygrał
+                } else if (loseCheckLocal(localBoard, 2)) {
+                    skipMove = true;  // Przeciwnik popełnił samobójczy ruch
+                }
+                
+                if (!skipMove) {
+                    // Zbuduj sekwencję dwóch ruchów
+                    char sequence[50];
+                    sprintf(sequence, "%d,%d", firstMove, secondMove);
+                    
+                    // Użyj funkcji rekurencyjnej dla dalszej eksploracji
+                    exploreRecursive(localBoard, sequence, 1, 2, maxDepth, searchDepth);
+                }
+                
+                // Cofnij drugi ruch
+                localBoard[i][j] = 0;
+            }
+        }
+    }
+}
+
+// Eksploruje dalsze ruchy dla predefiniowanej sekwencji 2 ruchów
+void exploreFromPredefinedSequence(int firstMove, int secondMove, int maxDepth, int searchDepth) {
+    if (maxDepth < 3) return;  // Potrzebujemy przynajmniej 3 ruchy
+    
+    printf("[DEEP ANALYSIS] Exploring from sequence %d,%d to depth %d\n", firstMove, secondMove, maxDepth);
+    
+    // Przygotuj planszę z dwoma pierwszymi ruchami
+    int localBoard[5][5];
+    memcpy(localBoard, board, sizeof(board));
+    
+    // Wykonaj pierwszy ruch (gracz 1)
+    int row1 = (firstMove / 10) - 1;
+    int col1 = (firstMove % 10) - 1;
+    localBoard[row1][col1] = 1;
+    
+    // Wykonaj drugi ruch (gracz 2)  
+    int row2 = (secondMove / 10) - 1;
+    int col2 = (secondMove % 10) - 1;
+    localBoard[row2][col2] = 2;
+    
+    // Zbuduj sekwencję startową
+    char startSequence[50];
+    sprintf(startSequence, "%d,%d", firstMove, secondMove);
+    
+    // Rozpocznij rekurencyjną eksplorację od trzeciego ruchu (gracz 1)
+    exploreRecursive(localBoard, startSequence, 1, 2, maxDepth, searchDepth);
 }
