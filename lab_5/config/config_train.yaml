@@ -1,0 +1,19 @@
+# Hydra configuration
+defaults:
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/${hydra.job.name}_${now:%H-%M}           # outputs/run_0, run_1, etc.
+  job:
+    name: training_run  # Job name
+    chdir: false        # Do not change working directory
+
+data:
+  n_samples: 1000
+  normalization_method: "l2"  # "l1", "l2", or None
+
+training:
+  epochs: 500
+  lr: 0.1
+  activation: "relu"  # or "sigmoid"
