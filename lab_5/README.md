@@ -1,170 +1,152 @@
-# CUDA Neural Network Lab 5
+# CUDA Neural Network - Lab 5
 
-Projekt laboratoryjny implementujący sieć neuronową z wykorzystaniem CUDA i Python.
+A neural network implementation using CUDA for forward and backward propagation with Python bindings.
 
-## 🛠️ Wymagania
+## 🛠️ Requirements
 
-- **System:** Linux (testowane na Arch Linux)
+- **System:** Linux (tested on Arch Linux)
 - **Python:** 3.11+
-- **CUDA:** 12.0+ (NVIDIA GPU wymagana)
-- **Conda/Miniconda**
+- **CUDA:** 12.0+ (NVIDIA GPU required)
+- **Dependencies:** CMake, GCC, pybind11, numpy, hydra-core
 
-## 🚀 Szybki start
+## 🚀 Quick Start
 
-### 1. Klonowanie i setup środowiska
+### 1. Clone and Setup Environment
 
 ```bash
 cd lab_5
 
-# Stwórz środowisko conda
+# Create conda environment
 conda env create -f environment.yml
-
-# Aktywuj środowisko
 conda activate cuda-nn-lab5
+
+# Or install manually
+pip install numpy hydra-core pybind11
 ```
 
-### 2. Kompilacja modułu CUDA
+### 2. Build CUDA Module
 
 ```bash
-# Przejdź do folderu propagation
 cd src/propagation
-
-# Skompiluj moduł CUDA
-make build
-
-# (Opcjonalnie) Przetestuj moduł
-make test
+make clean && make
 ```
 
-### 3. Uruchomienie treningu
+### 3. Run Training
 
 ```bash
-# Wróć do głównego folderu src
-cd ..
-
-# Uruchom skrypt treningowy
-python train.py
+cd ../..
+python src/train.py
 ```
 
-## 📁 Struktura projektu
+## 📁 Project Structure
 
 ```
 lab_5/
-├── README.md                    # Ten plik
-├── environment.yml              # Definicja środowiska conda
-├── requirements.txt             # Alternatywna lista zależności
-├── setup.sh                     # Skrypt automatycznego setup
+├── README.md
+├── environment.yaml
 ├── config/
-│   └── config_train.yaml        # Konfiguracja Hydra
+│   └── config_train.yaml       # Hydra configuration
 ├── src/
-│   ├── train.py                 # Główny skrypt treningowy
+│   ├── train.py                # Main training script
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── neural_network.py   # Neural network implementation
 │   ├── utils/
-│   │   └── data.py              # Narzędzia do obsługi danych
+│   │   └── data.py             # Data utilities
 │   └── propagation/
-│       ├── popragation_algorithms.cu   # Implementacja CUDA
-│       ├── popragation_algorithms.hpp  # Nagłówek C++
-│       ├── CMakeLists.txt       # Konfiguracja CMake
-│       └── Makefile             # Uproszczone polecenia budowania
-└── tests/                       # Testy jednostkowe
+│       ├── popragation_algorithms.cu    # CUDA implementation
+│       ├── popragation_algorithms.hpp   # C++ headers
+│       ├── CMakeLists.txt
+│       └── Makefile
+└── tests/                      # Unit tests
 ```
 
-## ⚙️ Konfiguracja
+## ⚙️ Configuration
 
-Główna konfiguracja znajduje się w `config/config_train.yaml`:
+Main configuration in `config/config_train.yaml`:
 
 ```yaml
 data:
-  n_samples: 1000                # Liczba próbek danych
-  normalization_method: "l2"     # Metoda normalizacji: "l1", "l2", None
+  n_samples: 1000
+  normalization_method: "l2"     # "l1", "l2", or None
 
 training:
-  epochs: 500                    # Liczba epok
-  lr: 0.1                       # Learning rate
-  activation: "relu"            # Funkcja aktywacji: "relu", "sigmoid"
+  epochs: 500
+  learning_rate: 0.1
+  use_relu: true                 # true for ReLU, false for sigmoid
 ```
 
-## 🔧 Polecenia budowania
+## 🧠 Neural Network Architecture
 
-W folderze `src/propagation/`:
+- **Input Layer:** 2 neurons (2D input data)
+- **Hidden Layer:** 4 neurons with ReLU/Sigmoid activation
+- **Output Layer:** 1 neuron with Sigmoid activation
+- **Task:** Binary classification (XOR-like problem)
 
-```bash
-make build    # Kompiluj moduł CUDA
-make test     # Kompiluj i przetestuj
-make clean    # Wyczyść pliki budowania
-make help     # Pokaż wszystkie dostępne polecenia
-```
+## � CUDA Functions
 
-## 🐍 Funkcje CUDA
-
-Dostępne funkcje w module `cuda_nn`:
+Available functions in `cuda_nn` module:
 
 ```python
 import cuda_nn
 
-# Funkcje aktywacji
-cuda_nn.sigmoid(x)              # Funkcja sigmoid
-cuda_nn.sigmoid_derivative(x)   # Pochodna sigmoid
-cuda_nn.relu(x)                 # Funkcja ReLU
-cuda_nn.relu_derivative(x)      # Pochodna ReLU
+# Activation functions
+cuda_nn.sigmoid(x)
+cuda_nn.relu(x)
+cuda_nn.sigmoid_derivative(x)
+cuda_nn.relu_derivative(x)
+
+# Propagation functions
+cuda_nn.forward_propagation(x, W1, b1, W2, b2, use_relu=False)
+cuda_nn.backward_propagation(x, y, W1, W2, z1, a1, z2, a2, use_relu=False)
 ```
 
-## 🚨 Rozwiązywanie problemów
-
-### Błąd: `cmake: command not found`
-```bash
-# Na Arch Linux
-sudo pacman -S cmake
-
-# Na Ubuntu/Debian
-sudo apt install cmake
-```
-
-### Błąd: `nvcc: command not found`
-```bash
-# Na Arch Linux
-sudo pacman -S cuda
-
-# Na Ubuntu/Debian
-sudo apt install nvidia-cuda-toolkit
-```
-
-### Błąd importu `cuda_nn`
-Sprawdź czy moduł został skompilowany:
-```bash
-cd src/propagation
-make build
-ls build/  # Powinien być plik cuda_nn.cpython-*.so
-```
-
-## 📊 Przykładowe uruchomienie
+## � Example Output
 
 ```bash
 $ python src/train.py
-hydra.core.utils - DEBUG - Setting JobRuntime:name=UNKNOWN_NAME
-hydra.core.utils - DEBUG - Setting JobRuntime:name=train
 INFO - Starting training with config: n_samples=1000, normalization=l2
-INFO - Testing CUDA neural network functions:
-INFO - sigmoid(0.5) = 0.622459352016449
-INFO - relu(0.5) = 0.5
+INFO - Training neural network for 500 epochs with learning_rate=0.1
+INFO - Using ReLU activation in hidden layer
+INFO - Epoch 0, Average Loss: 0.052257
+INFO - Epoch 100, Average Loss: 0.002886
+INFO - Epoch 400, Average Loss: 0.001527
+INFO - Training completed. Final loss: 0.002053
+INFO - Sample 0: Input=[ 0.136 -0.991], Target=0.0000, Prediction=0.0000
+INFO - Sample 1: Input=[-0.913  0.408], Target=0.0000, Prediction=0.0001
 ```
 
-## 🔍 Testowanie
+## 🚨 Troubleshooting
+
+### CUDA Not Found
+```bash
+# Install CUDA on Arch Linux
+sudo pacman -S cuda gcc
+
+# Install CUDA on Ubuntu/Debian
+sudo apt install nvidia-cuda-toolkit build-essential
+```
+
+### Build Errors
+```bash
+# Clean and rebuild
+cd src/propagation
+make clean && make
+
+# Check if CUDA module was built
+ls build/cuda_nn.cpython-*.so
+```
+
+## 🔍 Testing
 
 ```bash
-# Uruchom testy jednostkowe
+# Run unit tests
 python -m pytest tests/
 
-# Test modułu CUDA
+# Test CUDA module
 cd src/propagation && make test
 ```
 
-## 💡 Rozwój
+## � License
 
-- Dodaj więcej funkcji aktywacji
-- Implementuj pełny forward/backward pass
-- Dodaj różne optymalizatory
-- Rozszerz testy jednostkowe
-
-## 📝 Licencja
-
-Projekt edukacyjny - WSI Lab 5
+Educational project - WSI Lab 5
