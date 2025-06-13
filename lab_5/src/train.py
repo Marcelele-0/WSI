@@ -19,12 +19,13 @@ def main(cfg: DictConfig):
     import hydra
     from hydra.core.hydra_config import HydraConfig
     
-    # Get Hydra's output directory
+    # Get Hydra's output directory and job name
     hydra_cfg = HydraConfig.get()
     output_dir = hydra_cfg.runtime.output_dir
+    job_name = hydra_cfg.job.name
     
     # Configure logging to write to both console and file
-    log_file = os.path.join(output_dir, "training.log")
+    log_file = os.path.join(output_dir, f"{job_name}.log")
     
     # Clear any existing handlers
     logging.getLogger().handlers.clear()
