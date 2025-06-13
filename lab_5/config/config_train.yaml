@@ -6,7 +6,7 @@ hydra:
   run:
     dir: outputs/${hydra.job.name}_${now:%H-%M}
   job:
-    name: training_run  # Job name  
+    name: sigmoid_l2_run  # Job name  
     chdir: false        # Do not change working directory
 
 data:
@@ -16,5 +16,5 @@ data:
 training:
   epochs: 500
   learning_rate: 0.1
-  use_relu: true  # true for ReLU, false for sigmoid
+  use_relu: false  # true for ReLU, false for sigmoid
   use_gpu: true   # true for GPU acceleration, false for CPU

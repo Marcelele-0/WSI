@@ -10,7 +10,6 @@ __pycache__/
 *.pyc
 
 # Hydra outputs
-outputs/
 .hydra/
 
 # CMake build artifacts (but keep compiled CUDA modules)
@@ -28,6 +27,3 @@ lab_5/src/propagation/build/*.cmake
 .DS_Store
 *.swp
 *~
-
-# Logs
-*.log

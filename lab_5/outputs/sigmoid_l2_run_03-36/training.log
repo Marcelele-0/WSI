@@ -1,0 +1,29 @@
+INFO - Starting training with config: n_samples=1000, normalization=l2
+INFO - Logs will be saved to: /home/licho/.programming/UNI/WSI/lab_5/outputs/sigmoid_l2_run_03-36/training.log
+INFO - Starting neural network training with CUDA propagation...
+INFO - Training neural network for 1000 epochs with learning_rate=0.1
+INFO - Using Sigmoid activation in hidden layer
+INFO - Running on: CPU
+INFO - Epoch 0, Average Loss: 0.128263
+INFO - Epoch 100, Average Loss: 0.002959
+INFO - Epoch 200, Average Loss: 0.002607
+INFO - Epoch 300, Average Loss: 0.002504
+INFO - Epoch 400, Average Loss: 0.002403
+INFO - Epoch 500, Average Loss: 0.002300
+INFO - Epoch 600, Average Loss: 0.002199
+INFO - Epoch 700, Average Loss: 0.002104
+INFO - Epoch 800, Average Loss: 0.002016
+INFO - Epoch 900, Average Loss: 0.001934
+INFO - Training completed. Final loss: 0.001860
+INFO - Final predictions vs targets:
+INFO - Sample 0: Input=[0.9250089  0.37994543], Target=1.0000, Prediction=1.0000
+INFO - Sample 1: Input=[0.8264598 0.5629957], Target=1.0000, Prediction=1.0000
+INFO - Sample 2: Input=[ 0.00682798 -0.99997675], Target=0.0000, Prediction=0.5464
+INFO - Sample 3: Input=[0.2273805 0.973806 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 4: Input=[ 0.9793639  -0.20210461], Target=0.0000, Prediction=0.0000
+INFO - Sample 5: Input=[0.32151595 0.9469042 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 6: Input=[-0.63380337  0.7734942 ], Target=0.0000, Prediction=0.0000
+INFO - Sample 7: Input=[-0.97343105  0.22898033], Target=0.0000, Prediction=0.0000
+INFO - Sample 8: Input=[ 0.290632  -0.9568349], Target=0.0000, Prediction=0.0000
+INFO - Sample 9: Input=[-0.5932222   0.80503875], Target=0.0000, Prediction=0.0000
+INFO - Neural network training completed successfully!

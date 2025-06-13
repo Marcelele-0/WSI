@@ -1,0 +1,29 @@
+INFO - Starting training with config: n_samples=1000, normalization=l2
+INFO - Logs will be saved to: /home/licho/.programming/UNI/WSI/lab_5/outputs/ReLU_l2_run_03-34/training.log
+INFO - Starting neural network training with CUDA propagation...
+INFO - Training neural network for 1000 epochs with learning_rate=0.1
+INFO - Using ReLU activation in hidden layer
+INFO - Running on: CPU
+INFO - Epoch 0, Average Loss: 0.052147
+INFO - Epoch 100, Average Loss: 0.004855
+INFO - Epoch 200, Average Loss: 0.004321
+INFO - Epoch 300, Average Loss: 0.003903
+INFO - Epoch 400, Average Loss: 0.003544
+INFO - Epoch 500, Average Loss: 0.003237
+INFO - Epoch 600, Average Loss: 0.002976
+INFO - Epoch 700, Average Loss: 0.002839
+INFO - Epoch 800, Average Loss: 0.002904
+INFO - Epoch 900, Average Loss: 0.002086
+INFO - Training completed. Final loss: 0.002062
+INFO - Final predictions vs targets:
+INFO - Sample 0: Input=[-0.9953489   0.09633656], Target=0.0000, Prediction=0.0002
+INFO - Sample 1: Input=[0.4271199 0.904195 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 2: Input=[-0.51759475 -0.8556259 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 3: Input=[-0.18469517  0.9827959 ], Target=0.0000, Prediction=0.0002
+INFO - Sample 4: Input=[-0.9762145   0.21680683], Target=0.0000, Prediction=0.0002
+INFO - Sample 5: Input=[0.91480815 0.4038888 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 6: Input=[ 0.9969049  -0.07861661], Target=0.0000, Prediction=0.0000
+INFO - Sample 7: Input=[-0.76512367  0.64388335], Target=0.0000, Prediction=0.0002
+INFO - Sample 8: Input=[ 0.8555064  -0.51779217], Target=0.0000, Prediction=0.0000
+INFO - Sample 9: Input=[0.20011777 0.97977185], Target=1.0000, Prediction=1.0000
+INFO - Neural network training completed successfully!
