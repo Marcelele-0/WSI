@@ -1,0 +1,39 @@
+INFO - Starting training with config: n_samples=1000, normalization=l1
+INFO - Logs will be saved to: /home/licho/.programming/UNI/WSI/lab_5/outputs/ReLU_l1_run_03-41/ReLU_l1_run.log
+INFO - Starting neural network training with CUDA propagation...
+INFO - Training neural network for 2000 epochs with learning_rate=0.15
+INFO - Using ReLU activation in hidden layer
+INFO - Running on: CPU
+INFO - Epoch 0, Average Loss: 0.054797
+INFO - Epoch 100, Average Loss: 0.007198
+INFO - Epoch 200, Average Loss: 0.006388
+INFO - Epoch 300, Average Loss: 0.006057
+INFO - Epoch 400, Average Loss: 0.004462
+INFO - Epoch 500, Average Loss: 0.004998
+INFO - Epoch 600, Average Loss: 0.005170
+INFO - Epoch 700, Average Loss: 0.004859
+INFO - Epoch 800, Average Loss: 0.004257
+INFO - Epoch 900, Average Loss: 0.005112
+INFO - Epoch 1000, Average Loss: 0.004596
+INFO - Epoch 1100, Average Loss: 0.005014
+INFO - Epoch 1200, Average Loss: 0.003799
+INFO - Epoch 1300, Average Loss: 0.003561
+INFO - Epoch 1400, Average Loss: 0.003492
+INFO - Epoch 1500, Average Loss: 0.004221
+INFO - Epoch 1600, Average Loss: 0.003891
+INFO - Epoch 1700, Average Loss: 0.003625
+INFO - Epoch 1800, Average Loss: 0.003290
+INFO - Epoch 1900, Average Loss: 0.003401
+INFO - Training completed. Final loss: 0.003186
+INFO - Final predictions vs targets:
+INFO - Sample 0: Input=[-0.50205815  0.4979418 ], Target=0.0000, Prediction=0.0022
+INFO - Sample 1: Input=[-0.59853584  0.40146416], Target=0.0000, Prediction=0.0022
+INFO - Sample 2: Input=[ 0.28993005 -0.71007   ], Target=0.0000, Prediction=0.0000
+INFO - Sample 3: Input=[-0.9366689  -0.06333113], Target=1.0000, Prediction=0.9504
+INFO - Sample 4: Input=[-0.21961728  0.78038275], Target=0.0000, Prediction=0.0022
+INFO - Sample 5: Input=[ 0.17479777 -0.82520217], Target=0.0000, Prediction=0.0000
+INFO - Sample 6: Input=[-0.54549897 -0.4545011 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 7: Input=[0.33427945 0.6657205 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 8: Input=[ 0.01754915 -0.9824509 ], Target=0.0000, Prediction=0.0520
+INFO - Sample 9: Input=[-0.1379529 -0.8620471], Target=1.0000, Prediction=1.0000
+INFO - Neural network training completed successfully!

@@ -1,0 +1,119 @@
+INFO - Starting training with config: n_samples=1000, normalization=l2
+INFO - Logs will be saved to: /home/licho/.programming/UNI/WSI/lab_5/outputs/low_lr_run_03-49/low_lr_run.log
+INFO - Starting neural network training with CUDA propagation...
+INFO - Training neural network for 10000 epochs with learning_rate=0.01
+INFO - Using Sigmoid activation in hidden layer
+INFO - Running on: CPU
+INFO - Epoch 0, Average Loss: 0.125973
+INFO - Epoch 100, Average Loss: 0.010044
+INFO - Epoch 200, Average Loss: 0.005312
+INFO - Epoch 300, Average Loss: 0.004098
+INFO - Epoch 400, Average Loss: 0.003459
+INFO - Epoch 500, Average Loss: 0.003043
+INFO - Epoch 600, Average Loss: 0.002741
+INFO - Epoch 700, Average Loss: 0.002507
+INFO - Epoch 800, Average Loss: 0.002317
+INFO - Epoch 900, Average Loss: 0.002159
+INFO - Epoch 1000, Average Loss: 0.002023
+INFO - Epoch 1100, Average Loss: 0.001906
+INFO - Epoch 1200, Average Loss: 0.001802
+INFO - Epoch 1300, Average Loss: 0.001710
+INFO - Epoch 1400, Average Loss: 0.001627
+INFO - Epoch 1500, Average Loss: 0.001552
+INFO - Epoch 1600, Average Loss: 0.001484
+INFO - Epoch 1700, Average Loss: 0.001421
+INFO - Epoch 1800, Average Loss: 0.001363
+INFO - Epoch 1900, Average Loss: 0.001310
+INFO - Epoch 2000, Average Loss: 0.001261
+INFO - Epoch 2100, Average Loss: 0.001215
+INFO - Epoch 2200, Average Loss: 0.001172
+INFO - Epoch 2300, Average Loss: 0.001132
+INFO - Epoch 2400, Average Loss: 0.001094
+INFO - Epoch 2500, Average Loss: 0.001059
+INFO - Epoch 2600, Average Loss: 0.001026
+INFO - Epoch 2700, Average Loss: 0.000994
+INFO - Epoch 2800, Average Loss: 0.000965
+INFO - Epoch 2900, Average Loss: 0.000937
+INFO - Epoch 3000, Average Loss: 0.000910
+INFO - Epoch 3100, Average Loss: 0.000885
+INFO - Epoch 3200, Average Loss: 0.000861
+INFO - Epoch 3300, Average Loss: 0.000838
+INFO - Epoch 3400, Average Loss: 0.000816
+INFO - Epoch 3500, Average Loss: 0.000796
+INFO - Epoch 3600, Average Loss: 0.000776
+INFO - Epoch 3700, Average Loss: 0.000757
+INFO - Epoch 3800, Average Loss: 0.000739
+INFO - Epoch 3900, Average Loss: 0.000721
+INFO - Epoch 4000, Average Loss: 0.000705
+INFO - Epoch 4100, Average Loss: 0.000689
+INFO - Epoch 4200, Average Loss: 0.000673
+INFO - Epoch 4300, Average Loss: 0.000659
+INFO - Epoch 4400, Average Loss: 0.000644
+INFO - Epoch 4500, Average Loss: 0.000631
+INFO - Epoch 4600, Average Loss: 0.000617
+INFO - Epoch 4700, Average Loss: 0.000605
+INFO - Epoch 4800, Average Loss: 0.000593
+INFO - Epoch 4900, Average Loss: 0.000581
+INFO - Epoch 5000, Average Loss: 0.000569
+INFO - Epoch 5100, Average Loss: 0.000558
+INFO - Epoch 5200, Average Loss: 0.000548
+INFO - Epoch 5300, Average Loss: 0.000537
+INFO - Epoch 5400, Average Loss: 0.000527
+INFO - Epoch 5500, Average Loss: 0.000518
+INFO - Epoch 5600, Average Loss: 0.000508
+INFO - Epoch 5700, Average Loss: 0.000499
+INFO - Epoch 5800, Average Loss: 0.000490
+INFO - Epoch 5900, Average Loss: 0.000482
+INFO - Epoch 6000, Average Loss: 0.000473
+INFO - Epoch 6100, Average Loss: 0.000465
+INFO - Epoch 6200, Average Loss: 0.000457
+INFO - Epoch 6300, Average Loss: 0.000450
+INFO - Epoch 6400, Average Loss: 0.000442
+INFO - Epoch 6500, Average Loss: 0.000435
+INFO - Epoch 6600, Average Loss: 0.000428
+INFO - Epoch 6700, Average Loss: 0.000421
+INFO - Epoch 6800, Average Loss: 0.000415
+INFO - Epoch 6900, Average Loss: 0.000408
+INFO - Epoch 7000, Average Loss: 0.000402
+INFO - Epoch 7100, Average Loss: 0.000396
+INFO - Epoch 7200, Average Loss: 0.000390
+INFO - Epoch 7300, Average Loss: 0.000384
+INFO - Epoch 7400, Average Loss: 0.000378
+INFO - Epoch 7500, Average Loss: 0.000372
+INFO - Epoch 7600, Average Loss: 0.000367
+INFO - Epoch 7700, Average Loss: 0.000362
+INFO - Epoch 7800, Average Loss: 0.000356
+INFO - Epoch 7900, Average Loss: 0.000351
+INFO - Epoch 8000, Average Loss: 0.000346
+INFO - Epoch 8100, Average Loss: 0.000342
+INFO - Epoch 8200, Average Loss: 0.000337
+INFO - Epoch 8300, Average Loss: 0.000332
+INFO - Epoch 8400, Average Loss: 0.000328
+INFO - Epoch 8500, Average Loss: 0.000323
+INFO - Epoch 8600, Average Loss: 0.000319
+INFO - Epoch 8700, Average Loss: 0.000315
+INFO - Epoch 8800, Average Loss: 0.000310
+INFO - Epoch 8900, Average Loss: 0.000306
+INFO - Epoch 9000, Average Loss: 0.000302
+INFO - Epoch 9100, Average Loss: 0.000299
+INFO - Epoch 9200, Average Loss: 0.000295
+INFO - Epoch 9300, Average Loss: 0.000291
+INFO - Epoch 9400, Average Loss: 0.000287
+INFO - Epoch 9500, Average Loss: 0.000284
+INFO - Epoch 9600, Average Loss: 0.000280
+INFO - Epoch 9700, Average Loss: 0.000277
+INFO - Epoch 9800, Average Loss: 0.000273
+INFO - Epoch 9900, Average Loss: 0.000270
+INFO - Training completed. Final loss: 0.000267
+INFO - Final predictions vs targets:
+INFO - Sample 0: Input=[0.41959965 0.9077093 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 1: Input=[-0.6451026 -0.7640959], Target=1.0000, Prediction=1.0000
+INFO - Sample 2: Input=[-0.4002598  -0.91640174], Target=1.0000, Prediction=1.0000
+INFO - Sample 3: Input=[ 0.7123205 -0.7018544], Target=0.0000, Prediction=0.0000
+INFO - Sample 4: Input=[0.9890263  0.14773916], Target=1.0000, Prediction=1.0000
+INFO - Sample 5: Input=[-0.92590624 -0.3777534 ], Target=1.0000, Prediction=1.0000
+INFO - Sample 6: Input=[0.80736643 0.59005046], Target=1.0000, Prediction=1.0000
+INFO - Sample 7: Input=[-0.54675525  0.83729243], Target=0.0000, Prediction=0.0000
+INFO - Sample 8: Input=[-0.8988323   0.43829265], Target=0.0000, Prediction=0.0000
+INFO - Sample 9: Input=[-0.06984778 -0.9975577 ], Target=1.0000, Prediction=1.0000
+INFO - Neural network training completed successfully!
