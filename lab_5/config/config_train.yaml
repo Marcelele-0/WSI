@@ -6,7 +6,7 @@ hydra:
   run:
     dir: outputs/${hydra.job.name}_${now:%H-%M}           # outputs/run_0, run_1, etc.
   job:
-    name: training_run  # Job name
+    name: training_run  # Job name  
     chdir: false        # Do not change working directory
 
 data:

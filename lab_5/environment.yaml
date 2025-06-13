@@ -1,0 +1,30 @@
+name: cuda-nn
+channels:
+  - defaults
+  - conda-forge
+  - nvidia
+dependencies:
+  # Python
+  - python=3.11
+  
+  # Scientific computing
+  - numpy
+  
+  # Configuration management
+  - hydra-core
+  - omegaconf
+  
+  # Development tools
+  - pytest
+  
+  # CUDA support (optional - system CUDA can be used)
+  - cudatoolkit=12.0
+  
+  # Build tools
+  - cmake
+  - make
+  - pybind11
+  
+  # Pip dependencies (if needed)
+  - pip
+  - pip:

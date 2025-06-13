@@ -3,3 +3,31 @@
 *.pyc
 *.pyd
 *.pkl
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Hydra outputs
+outputs/
+.hydra/
+
+# CMake build artifacts (but keep compiled CUDA modules)
+lab_5/src/propagation/build/CMakeCache.txt
+lab_5/src/propagation/build/CMakeFiles/
+lab_5/src/propagation/build/cmake_install.cmake
+lab_5/src/propagation/build/Makefile
+lab_5/src/propagation/build/*.cmake
+
+# IDEs
+*.vscode/
+*.idea/
+
+# OS files
+.DS_Store
+*.swp
+*~
+
+# Logs
+*.log
