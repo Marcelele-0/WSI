@@ -4,7 +4,7 @@ defaults:
 
 hydra:
   run:
-    dir: outputs/${hydra.job.name}_${now:%H-%M}           # outputs/run_0, run_1, etc.
+    dir: outputs/${hydra.job.name}_${hydra.data.normalization_method}_${training.use_relu}           # example: outputs/training_run_l2_true
   job:
     name: training_run  # Job name  
     chdir: false        # Do not change working directory
