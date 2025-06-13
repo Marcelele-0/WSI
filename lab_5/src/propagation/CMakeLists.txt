@@ -12,5 +12,8 @@ include_directories(${Python3_NumPy_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Create the pybind11 module (now files are in current directory)
-pybind11_add_module(cuda_nn popragation_algorithms.cu)
+pybind11_add_module(cuda_nn 
+    popragation_algorithms.cu 
+    propagation_algorithms_gpu.cu
+)
 target_link_libraries(cuda_nn PRIVATE ${Python3_LIBRARIES})

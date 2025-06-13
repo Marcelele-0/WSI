@@ -35,13 +35,15 @@ def main(cfg: DictConfig):
     epochs = cfg.get('training', {}).get('epochs', 1000)
     learning_rate = cfg.get('training', {}).get('learning_rate', 0.1)
     use_relu = cfg.get('training', {}).get('use_relu', False)
+    use_gpu = cfg.get('training', {}).get('use_gpu', False)
     
     # Train the network
     trained_network, training_losses = train_neural_network(
         X_normalized, y, 
         epochs=epochs, 
         learning_rate=learning_rate, 
-        use_relu=use_relu
+        use_relu=use_relu,
+        use_gpu=use_gpu
     )
     
     logger.info("Neural network training completed successfully!")

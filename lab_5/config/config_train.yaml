@@ -17,3 +17,4 @@ training:
   epochs: 500
   learning_rate: 0.1
   use_relu: true  # true for ReLU, false for sigmoid
+  use_gpu: true   # true for GPU acceleration, false for CPU

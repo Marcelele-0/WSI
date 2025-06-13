@@ -16,12 +16,13 @@ import cuda_nn  # type: ignore
 class SimpleNeuralNetwork:
     """Simple 2-layer neural network using CUDA propagation functions."""
     
-    def __init__(self, input_size=2, hidden_size=4, output_size=1, use_relu=False):
+    def __init__(self, input_size=2, hidden_size=4, output_size=1, use_relu=False, use_gpu=False):
         """Initialize the neural network with random weights."""
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.use_relu = use_relu
+        self.use_gpu = use_gpu
         
         # Initialize weights and biases
         np.random.seed(42)
@@ -31,9 +32,13 @@ class SimpleNeuralNetwork:
         self.b2 = np.zeros(output_size, dtype=np.float32)
     
     def forward(self, x):
-        """Forward propagation using CUDA function."""
+        """Forward propagation using CUDA function (CPU or GPU)."""
         x = x.astype(np.float32)
-        result = cuda_nn.forward_propagation(x, self.W1, self.b1, self.W2.flatten(), self.b2, self.use_relu)
+        
+        if self.use_gpu:
+            result = cuda_nn.forward_propagation_gpu(x, self.W1, self.b1, self.W2.flatten(), self.b2, self.use_relu)
+        else:
+            result = cuda_nn.forward_propagation(x, self.W1, self.b1, self.W2.flatten(), self.b2, self.use_relu)
         
         # Extract hidden layer activations (a1), z2, and output (a2)
         self.a1 = result[:4]  # Hidden layer activations
@@ -43,7 +48,7 @@ class SimpleNeuralNetwork:
         return self.a2
     
     def backward(self, x, y):
-        """Backward propagation using CUDA function."""
+        """Backward propagation using CUDA function (CPU or GPU)."""
         x = x.astype(np.float32)
         y = np.array([y], dtype=np.float32)
         
@@ -54,9 +59,14 @@ class SimpleNeuralNetwork:
             for j in range(2):
                 z1[i] += x[j] * self.W1[j, i]
         
-        gradients = cuda_nn.backward_propagation(
-            x, y, self.W1, self.W2.flatten(), z1, self.a1, self.z2, self.a2, self.use_relu
-        )
+        if self.use_gpu:
+            gradients = cuda_nn.backward_propagation_gpu(
+                x, y, self.W1, self.W2.flatten(), z1, self.a1, self.z2, self.a2, self.use_relu
+            )
+        else:
+            gradients = cuda_nn.backward_propagation(
+                x, y, self.W1, self.W2.flatten(), z1, self.a1, self.z2, self.a2, self.use_relu
+            )
         
         return gradients
     
@@ -83,15 +93,17 @@ class SimpleNeuralNetwork:
         return loss, prediction
 
 
-def train_neural_network(X, y, epochs=1000, learning_rate=0.1, use_relu=False):
+def train_neural_network(X, y, epochs=1000, learning_rate=0.1, use_relu=False, use_gpu=False):
     """Train the neural network using CUDA propagation functions."""
     logger = logging.getLogger(__name__)
     
     # Initialize network
-    nn = SimpleNeuralNetwork(use_relu=use_relu)
+    nn = SimpleNeuralNetwork(use_relu=use_relu, use_gpu=use_gpu)
     
+    device_type = "GPU" if use_gpu else "CPU"
     logger.info(f"Training neural network for {epochs} epochs with learning_rate={learning_rate}")
     logger.info(f"Using {'ReLU' if use_relu else 'Sigmoid'} activation in hidden layer")
+    logger.info(f"Running on: {device_type}")
     
     losses = []
     

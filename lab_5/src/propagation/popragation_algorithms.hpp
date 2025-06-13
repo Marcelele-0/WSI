@@ -2,12 +2,24 @@
 
 #include <pybind11/numpy.h>
 #include <string>
+#include <cmath>
 
-// Forward declarations of activation functions
-__host__ __device__ float sigmoid(float x);
-__host__ __device__ float sigmoid_derivative(float x);
-__host__ __device__ float relu(float x);
-__host__ __device__ float relu_derivative(float x);
+// Inline activation functions (available in both files)
+__host__ __device__ inline float sigmoid(float x) {
+    return 1.0f / (1.0f + expf(-x));
+}
+
+__host__ __device__ inline float sigmoid_derivative(float x) {
+    return x * (1.0f - x);
+}
+
+__host__ __device__ inline float relu(float x) {
+    return x > 0.0f ? x : 0.0f;
+}
+
+__host__ __device__ inline float relu_derivative(float x) {
+    return x > 0.0f ? 1.0f : 0.0f;
+}
 
 // Main functions
 float propagate(

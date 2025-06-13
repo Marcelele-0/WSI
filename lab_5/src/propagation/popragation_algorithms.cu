@@ -1,45 +1,9 @@
 #include "popragation_algorithms.hpp"
+#include "propagation_algorithms_gpu.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include <cmath>
 
 namespace py = pybind11;
-
-/**
- * @brief Sigmoid activation function
- * @param x Input value
- * @return Sigmoid of x
- */
-__host__ __device__ float sigmoid(float x) {
-    return 1.0f / (1.0f + expf(-x));  // Use expf instead of exp for GPU compatibility
-}
-
-/**
- * @brief Sigmoid derivative function
- * @param x Input value
- * @return Derivative of sigmoid at x
- */
-__host__ __device__ float sigmoid_derivative(float x) {
-    return x * (1.0f - x);
-}
-
-/**
- * @brief ReLU activation function
- * @param x Input value
- * @return ReLU of x
- */
-__host__ __device__ float relu(float x) {
-    return x > 0.0f ? x : 0.0f;
-}
-
-/**
- * @brief ReLU derivative function
- * @param x Input value
- * @return Derivative of ReLU at x
- */
-__host__ __device__ float relu_derivative(float x) {
-    return x > 0.0f ? 1.0f : 0.0f;
-}
 
 
 /**
@@ -241,13 +205,23 @@ PYBIND11_MODULE(cuda_nn, m) {
     m.def("relu", &relu, "ReLU activation function");
     m.def("relu_derivative", &relu_derivative, "ReLU derivative");
     
-    // Expose propagation functions
+    // Expose propagation functions (CPU)
     m.def("forward_propagation", &forward_propagation_py, 
-          "Forward propagation through 2-layer neural network",
+          "Forward propagation through 2-layer neural network (CPU)",
           py::arg("x"), py::arg("W1"), py::arg("b1"), py::arg("W2"), py::arg("b2"), py::arg("use_relu") = false);
     
     m.def("backward_propagation", &backward_propagation_py,
-          "Backward propagation to compute gradients",
+          "Backward propagation to compute gradients (CPU)",
+          py::arg("x"), py::arg("y"), py::arg("W1"), py::arg("W2"), 
+          py::arg("z1"), py::arg("a1"), py::arg("z2"), py::arg("a2"), py::arg("use_relu") = false);
+    
+    // Expose GPU-accelerated propagation functions
+    m.def("forward_propagation_gpu", &forward_propagation_gpu, 
+          "Forward propagation through 2-layer neural network (GPU)",
+          py::arg("x"), py::arg("W1"), py::arg("b1"), py::arg("W2"), py::arg("b2"), py::arg("use_relu") = false);
+    
+    m.def("backward_propagation_gpu", &backward_propagation_gpu,
+          "Backward propagation to compute gradients (GPU)",
           py::arg("x"), py::arg("y"), py::arg("W1"), py::arg("W2"), 
           py::arg("z1"), py::arg("a1"), py::arg("z2"), py::arg("a2"), py::arg("use_relu") = false);
 }
