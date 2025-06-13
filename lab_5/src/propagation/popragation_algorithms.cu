@@ -128,6 +128,109 @@ void backward_propagation(
     }
 }
 
+// Wrapper functions for Python interface
+py::array_t<float> forward_propagation_py(
+    py::array_t<float> x_input,
+    py::array_t<float> W1_input,
+    py::array_t<float> b1_input,
+    py::array_t<float> W2_input,
+    py::array_t<float> b2_input,
+    bool use_relu = false
+) {
+    auto x_buf = x_input.request();
+    auto W1_buf = W1_input.request();
+    auto b1_buf = b1_input.request();
+    auto W2_buf = W2_input.request();
+    auto b2_buf = b2_input.request();
+    
+    float* x = static_cast<float*>(x_buf.ptr);
+    float* W1 = static_cast<float*>(W1_buf.ptr);
+    float* b1 = static_cast<float*>(b1_buf.ptr);
+    float* W2 = static_cast<float*>(W2_buf.ptr);
+    float* b2 = static_cast<float*>(b2_buf.ptr);
+    
+    // Allocate outputs
+    float z1[4], a1[4];
+    float z2, a2;
+    
+    forward_propagation(x, W1, b1, W2, b2, z1, a1, z2, a2, use_relu);
+    
+    // Return results as numpy arrays
+    auto result = py::array_t<float>(6);  // z1(4) + a1(4) + z2(1) + a2(1) = 10, but we'll return key values
+    auto result_buf = result.request();
+    float* result_ptr = static_cast<float*>(result_buf.ptr);
+    
+    // Store a1 (4 elements) and a2 (1 element) and z2 (1 element)
+    for (int i = 0; i < 4; i++) {
+        result_ptr[i] = a1[i];
+    }
+    result_ptr[4] = z2;
+    result_ptr[5] = a2;
+    
+    return result;
+}
+
+py::dict backward_propagation_py(
+    py::array_t<float> x_input,
+    py::array_t<float> y_input,
+    py::array_t<float> W1_input,
+    py::array_t<float> W2_input,
+    py::array_t<float> z1_input,
+    py::array_t<float> a1_input,
+    float z2,
+    float a2,
+    bool use_relu = false
+) {
+    auto x_buf = x_input.request();
+    auto y_buf = y_input.request();
+    auto W1_buf = W1_input.request();
+    auto W2_buf = W2_input.request();
+    auto z1_buf = z1_input.request();
+    auto a1_buf = a1_input.request();
+    
+    float* x = static_cast<float*>(x_buf.ptr);
+    float* y = static_cast<float*>(y_buf.ptr);
+    float* W1 = static_cast<float*>(W1_buf.ptr);
+    float* W2 = static_cast<float*>(W2_buf.ptr);
+    float* z1 = static_cast<float*>(z1_buf.ptr);
+    float* a1 = static_cast<float*>(a1_buf.ptr);
+    
+    // Allocate gradient arrays
+    float dW1[8], db1[4], dW2[4], db2[1];  // dW1: 2x4=8
+    
+    backward_propagation(x, y, W1, W2, z1, a1, z2, a2, dW1, db1, dW2, db2, use_relu);
+    
+    // Create numpy arrays for gradients
+    auto dW1_array = py::array_t<float>({2, 4});
+    auto db1_array = py::array_t<float>(4);
+    auto dW2_array = py::array_t<float>(4);
+    auto db2_array = py::array_t<float>(1);
+    
+    auto dW1_buf = dW1_array.request();
+    auto db1_buf = db1_array.request();
+    auto dW2_buf = dW2_array.request();
+    auto db2_buf = db2_array.request();
+    
+    float* dW1_ptr = static_cast<float*>(dW1_buf.ptr);
+    float* db1_ptr = static_cast<float*>(db1_buf.ptr);
+    float* dW2_ptr = static_cast<float*>(dW2_buf.ptr);
+    float* db2_ptr = static_cast<float*>(db2_buf.ptr);
+    
+    // Copy gradients
+    for (int i = 0; i < 8; i++) dW1_ptr[i] = dW1[i];
+    for (int i = 0; i < 4; i++) db1_ptr[i] = db1[i];
+    for (int i = 0; i < 4; i++) dW2_ptr[i] = dW2[i];
+    db2_ptr[0] = db2[0];
+    
+    py::dict gradients;
+    gradients["dW1"] = dW1_array;
+    gradients["db1"] = db1_array;
+    gradients["dW2"] = dW2_array;
+    gradients["db2"] = db2_array;
+    
+    return gradients;
+}
+
 // Pybind11 module definition
 PYBIND11_MODULE(cuda_nn, m) {
     m.doc() = "CUDA Neural Network Propagation Module";
@@ -138,7 +241,13 @@ PYBIND11_MODULE(cuda_nn, m) {
     m.def("relu", &relu, "ReLU activation function");
     m.def("relu_derivative", &relu_derivative, "ReLU derivative");
     
-    // Expose main functions (you'll need to implement propagate and predict)
-    // m.def("propagate", &propagate, "Forward and backward propagation");
-    // m.def("predict", &predict, "Prediction function");
+    // Expose propagation functions
+    m.def("forward_propagation", &forward_propagation_py, 
+          "Forward propagation through 2-layer neural network",
+          py::arg("x"), py::arg("W1"), py::arg("b1"), py::arg("W2"), py::arg("b2"), py::arg("use_relu") = false);
+    
+    m.def("backward_propagation", &backward_propagation_py,
+          "Backward propagation to compute gradients",
+          py::arg("x"), py::arg("y"), py::arg("W1"), py::arg("W2"), 
+          py::arg("z1"), py::arg("a1"), py::arg("z2"), py::arg("a2"), py::arg("use_relu") = false);
 }

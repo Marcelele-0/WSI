@@ -1,4 +1,3 @@
-
 # Standard library imports
 import logging
 import os
@@ -11,10 +10,7 @@ from omegaconf import DictConfig
 
 # Local application imports
 from utils.data import generate_data, normalize_data
-
-# Add path to CUDA module
-sys.path.append(os.path.join(os.path.dirname(__file__), "propagation", "build"))
-import cuda_nn  # type: ignore
+from models.neural_network import train_neural_network
 
 @hydra.main(version_base=None, config_path=os.path.join("..", "config"), config_name="config_train")
 def main(cfg: DictConfig):
@@ -31,6 +27,24 @@ def main(cfg: DictConfig):
     
     # Normalize data
     X_normalized = normalize_data(X, cfg.data.normalization_method)
+    
+    # Train neural network using CUDA propagation
+    logger.info("Starting neural network training with CUDA propagation...")
+    
+    # Training parameters
+    epochs = cfg.get('training', {}).get('epochs', 1000)
+    learning_rate = cfg.get('training', {}).get('learning_rate', 0.1)
+    use_relu = cfg.get('training', {}).get('use_relu', False)
+    
+    # Train the network
+    trained_network, training_losses = train_neural_network(
+        X_normalized, y, 
+        epochs=epochs, 
+        learning_rate=learning_rate, 
+        use_relu=use_relu
+    )
+    
+    logger.info("Neural network training completed successfully!")
 
 
 if __name__ == "__main__":

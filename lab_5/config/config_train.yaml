@@ -15,5 +15,5 @@ data:
 
 training:
   epochs: 500
-  lr: 0.1
-  activation: "relu"  # or "sigmoid"
+  learning_rate: 0.1
+  use_relu: true  # true for ReLU, false for sigmoid
