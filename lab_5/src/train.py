@@ -15,12 +15,34 @@ from models.neural_network import train_neural_network
 @hydra.main(version_base=None, config_path=os.path.join("..", "config"), config_name="config_train")
 def main(cfg: DictConfig):
     """Main function to generate and normalize data."""
-    # Configure logger after Hydra initialization
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s', force=True)
-    logger = logging.getLogger(__name__)
+    # Configure logger after Hydra initialization - log to both console and file
+    import hydra
+    from hydra.core.hydra_config import HydraConfig
     
-    logger.info("Starting training with config: n_samples=%d, normalization=%s", 
-                cfg.data.n_samples, cfg.data.normalization_method)
+    # Get Hydra's output directory
+    hydra_cfg = HydraConfig.get()
+    output_dir = hydra_cfg.runtime.output_dir
+    
+    # Configure logging to write to both console and file
+    log_file = os.path.join(output_dir, "training.log")
+    
+    # Clear any existing handlers
+    logging.getLogger().handlers.clear()
+    
+    # Configure logging with both file and console handlers
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ],
+        force=True
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting training with config: n_samples={cfg.data.n_samples}, normalization={cfg.data.normalization_method}")
+    logger.info(f"Logs will be saved to: {log_file}")
     
     # Generate data
     X, y = generate_data(cfg.data.n_samples)
